@@ -1,1 +1,30 @@
-spring.application.name=EventService
+server:
+  port: 8081
+
+spring:
+  application:
+    name: Event
+
+  datasource:
+    url: ${url}
+    username: ${username}
+    password: ${password}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: true
+    properties:
+      hibernate:
+        format-sql: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+    jackson:
+      serialization:
+        WRITE_DATES_AS_TIMESTAMPS: false
+
+logging:
+  level:
+    org.springframework: INFO
+    org.hibernate.SQL: DEBUG
