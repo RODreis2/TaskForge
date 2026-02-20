@@ -16,16 +16,11 @@ import java.util.UUID;
 
 @Service
 @AllArgsConstructor
-@NoArgsConstructor
+@NoArgsConstructor(force = true)
 public class UserService {
 
     private final UserMapper userMapper;
     private final UserRepository userRepository;
-
-    public UserService(UserMapper userMapper, UserRepository userRepository) {
-        this.userMapper = userMapper;
-        this.userRepository = userRepository;
-    }
 
 
     public List<UserModel> getAllUser(){
