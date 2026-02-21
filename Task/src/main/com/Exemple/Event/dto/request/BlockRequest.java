@@ -2,10 +2,15 @@ package com.Exemple.Event.dto.request;
 
 import com.Exemple.Event.domain.TaskModel;
 import com.Exemple.Event.enums.BlockType;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
-import java.util.UUID;
 
+@NoArgsConstructor
+@AllArgsConstructor
+@Data
 public class BlockRequest {
 
     private TaskModel task;

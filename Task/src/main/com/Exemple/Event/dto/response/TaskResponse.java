@@ -2,7 +2,6 @@ package com.Exemple.Event.dto.response;
 
 import com.Exemple.Event.domain.BlockModel;
 
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
