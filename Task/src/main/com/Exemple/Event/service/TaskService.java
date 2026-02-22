@@ -13,7 +13,6 @@ import com.Exemple.Event.repository.BlockRepository;
 import com.Exemple.Event.repository.CreateTaskRepository;
 import com.Exemple.Event.repository.TaskRepository;
 import lombok.AllArgsConstructor;
-import lombok.Data;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -24,7 +23,6 @@ import java.util.UUID;
 @AllArgsConstructor
 public class TaskService {
 
-    private final CreateTaskRepository createTaskRepository;
     private final TaskRepository taskRepository;
     private final TaskMapper taskMapper;
     private final BlockMapper blockMapper;
