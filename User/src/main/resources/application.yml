@@ -1,14 +1,14 @@
 server:
-  port: 8080
+  port: 8081
 
 spring:
   application:
     name: User
 
   datasource:
-    url: ${url}
-    username: ${username}
-    password: ${password}
+    url: ${DB_USER_URL}
+    username: ${DB_USER_USERNAME}
+    password: ${DB_USER_PASSWORD}
     driver-class-name: org.postgresql.Driver
 
   jpa:
@@ -16,15 +16,15 @@ spring:
       ddl-auto: validate
     show-sql: true
     properties:
-        hibernate:
-          format-sql: true
-          dialect: org.hibernate.dialect.PostgreSQLDialect
+      hibernate:
+        format-sql: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect
 
     jackson:
       serialization:
         WRITE_DATES_AS_TIMESTAMPS: false
 
 logging:
-      level:
-        org.springframework: INFO
-        org.hibernate.SQL: DEBUG
+  level:
+    org.springframework: INFO
+    org.hibernate.SQL: DEBUG
