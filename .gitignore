@@ -1,0 +1,9 @@
+# IntelliJ local config (machine-specific)
+.idea/TaskForge.iml
+.idea/compiler.xml
+.idea/misc.xml
+.idea/dataSources.xml
+.idea/sqldialects.xml
+
+# Local IDE/build outputs
+out/
