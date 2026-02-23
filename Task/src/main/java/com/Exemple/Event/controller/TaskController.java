@@ -7,7 +7,6 @@ import com.Exemple.Event.dto.request.TaskRequest;
 import com.Exemple.Event.dto.response.BlockResponse;
 import com.Exemple.Event.dto.response.TaskResponse;
 import com.Exemple.Event.mapper.TaskMapper;
-import com.Exemple.Event.repository.BlockRepository;
 import com.Exemple.Event.service.TaskService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -26,12 +25,12 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class TaskController {
 
-    private final TaskService taskService;
+    private final TaskService eventService;
     private final TaskMapper taskMapper;
 
     @PostMapping("/task")
     public ResponseEntity<TaskResponse> createTask(@Valid @RequestBody TaskRequest request){
-        TaskModel taskModel = taskService.createTask(request);
+        TaskModel taskModel = eventService.createTask(request);
         TaskResponse response = taskMapper.toResponse(taskModel);
 
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
@@ -41,7 +40,7 @@ public class TaskController {
     @PostMapping("/{taskId}/blocks")
     public ResponseEntity<BlockResponse> addBlock(@PathVariable UUID taskId, @RequestBody BlockRequest request) {
 
-        BlockResponse response = taskService.addBlock(taskId, request);
+        BlockResponse response = eventService.addBlock(taskId, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 }

@@ -6,7 +6,6 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.springframework.data.annotation.Id;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -17,6 +16,7 @@ import java.util.UUID;
 @Data
 @Builder
 @Entity
+@Table(name = "blocks")
 public class BlockModel {
 
 
@@ -25,21 +25,25 @@ public class BlockModel {
     private UUID id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "task_id")
+    @JoinColumn(name = "task_id", nullable = false)
     private TaskModel task;
 
     @Enumerated(EnumType.STRING)
+    @Column(name = "type")
     private BlockType type;
 
+    @Column(name = "order_index")
     private Integer orderIndex;
 
-    @Column(columnDefinition = "TEXT")
+    @Column(name = "text_content", columnDefinition = "TEXT")
     private String textContent;
 
-    @Column(columnDefinition = "TEXT")
+    @Column(name = "drawing_data", columnDefinition = "TEXT")
     private String drawingData;
 
+    @Column(name = "created_at")
     private LocalDateTime createdAt;
 
+    @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 }
