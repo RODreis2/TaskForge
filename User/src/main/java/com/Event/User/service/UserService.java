@@ -9,14 +9,14 @@ import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import lombok.AllArgsConstructor;
 import lombok.NoArgsConstructor;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import java.util.List;
 import java.util.UUID;
 
 
 @Service
-@AllArgsConstructor
-@NoArgsConstructor(force = true)
+@RequiredArgsConstructor
 public class UserService {
 
     private final UserMapper userMapper;
@@ -33,7 +33,6 @@ public class UserService {
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new RuntimeException("E-mail já cadastrado no sistema.");
         }
-
         UserModel userModel = userMapper.toEntity(request);
         return userRepository.save(userModel);
     }

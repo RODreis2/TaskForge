@@ -1,4 +1,10 @@
 package com.Event.User.config;
 
-public record JWTuserData() {
+import lombok.Builder;
+
+import java.util.UUID;
+
+
+@Builder
+public record JWTuserData(UUID id, String name, String email) {
 }

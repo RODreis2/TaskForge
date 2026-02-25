@@ -1,4 +1,4 @@
 package com.Event.User.dto.response;
 
-public class LoginResponse {
+public record LoginResponse(String token) {
 }

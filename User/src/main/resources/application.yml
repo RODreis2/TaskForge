@@ -28,3 +28,8 @@ logging:
   level:
     org.springframework: INFO
     org.hibernate.SQL: DEBUG
+
+TaskForge:
+  security:
+    private-key: file:${PRIVATE_KEY}
+    public-key: file:${PUBLIC_KEY}
