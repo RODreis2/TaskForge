@@ -10,6 +10,7 @@ import jakarta.transaction.Transactional;
 import lombok.AllArgsConstructor;
 import lombok.NoArgsConstructor;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import java.util.List;
 import java.util.UUID;
@@ -21,6 +22,7 @@ public class UserService {
 
     private final UserMapper userMapper;
     private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
 
 
     public List<UserModel> getAllUser(){
@@ -29,11 +31,15 @@ public class UserService {
 
     @Transactional
     public UserModel createUser(UserRequest request) {
-
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new RuntimeException("E-mail já cadastrado no sistema.");
         }
+
         UserModel userModel = userMapper.toEntity(request);
+
+        // IMPORTANTE:
+        userModel.setPassword(passwordEncoder.encode(request.getPassword()));
+
         return userRepository.save(userModel);
     }
 
