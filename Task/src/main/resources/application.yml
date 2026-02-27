@@ -5,6 +5,7 @@ spring:
   application:
     name: Event
 
+
   datasource:
     url: ${SPRING_DATASOURCE_URL:${DB_EVENT_URL}}
     username: ${SPRING_DATASOURCE_USERNAME:${DB_EVENT_USERNAME}}
@@ -28,3 +29,7 @@ logging:
   level:
     org.springframework: INFO
     org.hibernate.SQL: DEBUG
+
+TaskForge:
+  security:
+    public-key: file:${TASK_PUBLIC_KEY}

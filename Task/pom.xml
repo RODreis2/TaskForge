@@ -20,6 +20,7 @@
 
 	<properties>
 		<java.version>21</java.version>
+		<jjwt.version>0.12.5</jjwt.version>
 
 		<!-- Versions for tools not managed by Spring Boot BOM -->
 		<mapstruct.version>1.6.3</mapstruct.version>
@@ -28,6 +29,7 @@
 	</properties>
 
 	<dependencies>
+
 
 		<!-- Web -->
 		<dependency>
@@ -45,6 +47,10 @@
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-security</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-oauth2-resource-server</artifactId>
 		</dependency>
 
 		<!-- JPA -->
@@ -92,6 +98,23 @@
 			<version>${lombok.mapstruct.binding.version}</version>
 			<scope>provided</scope>
 		</dependency>
+		<dependency>
+			<groupId>io.jsonwebtoken</groupId>
+			<artifactId>jjwt-api</artifactId>
+			<version>${jjwt.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>io.jsonwebtoken</groupId>
+			<artifactId>jjwt-impl</artifactId>
+			<version>${jjwt.version}</version>
+			<scope>runtime</scope>
+		</dependency>
+		<dependency>
+			<groupId>io.jsonwebtoken</groupId>
+			<artifactId>jjwt-jackson</artifactId>
+			<version>${jjwt.version}</version>
+			<scope>runtime</scope>
+		</dependency>
 
 		<!-- Tests -->
 		<dependency>
@@ -103,6 +126,10 @@
 			<groupId>org.springframework.security</groupId>
 			<artifactId>spring-security-test</artifactId>
 			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.security</groupId>
+			<artifactId>spring-security-oauth2-jose</artifactId>
 		</dependency>
 
 	</dependencies>
