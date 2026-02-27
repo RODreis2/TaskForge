@@ -27,6 +27,23 @@ export interface TaskResponse {
   description: string;
 }
 
+export interface TaskSummaryResponse {
+  id: string;
+  title: string;
+  description: string;
+  updatedAt: string;
+  blockCount: number;
+}
+
+export interface TaskDetailResponse {
+  id: string;
+  title: string;
+  description: string;
+  createdAt: string;
+  updatedAt: string;
+  blocks: BlockResponse[];
+}
+
 export interface BlockRequest {
   type: 'TEXT' | 'DRAW';
   orderIndex: number;
@@ -38,10 +55,13 @@ export interface BlockRequest {
 
 export interface BlockResponse {
   id: string;
-  type: string;
+  taskId: string;
+  type: 'TEXT' | 'DRAW';
   orderIndex: number;
   textContent?: string;
   drawingData?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -66,6 +86,14 @@ export class ApiService {
 
   createTask(payload: TaskRequest): Observable<TaskResponse> {
     return this.http.post<TaskResponse>('/api/tasks/event/task', payload);
+  }
+
+  listTasks(): Observable<TaskSummaryResponse[]> {
+    return this.http.get<TaskSummaryResponse[]>('/api/tasks/event/tasks');
+  }
+
+  getTask(taskId: string): Observable<TaskDetailResponse> {
+    return this.http.get<TaskDetailResponse>(`/api/tasks/event/task/${taskId}`);
   }
 
   createBlock(taskId: string, payload: BlockRequest): Observable<BlockResponse> {

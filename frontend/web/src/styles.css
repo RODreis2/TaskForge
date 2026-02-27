@@ -3,13 +3,21 @@
 @tailwind utilities;
 
 :root {
-  --card-shadow: 0 10px 35px rgba(15, 23, 42, 0.08);
+  --card-shadow: 0 10px 35px rgba(15, 23, 42, 0.12);
+  --forge-bg: #0f0f10;
+  --forge-panel: #1e1d1b;
+  --forge-panel-soft: #252320;
+  --forge-border: #4d463d;
+  --forge-ink: #e9e3d4;
+  --forge-muted: #b7ad97;
+  --forge-accent: #d56d1d;
+  --forge-accent-soft: #e5a86f;
 }
 
 body {
   font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
   min-height: 100vh;
-  background: radial-gradient(circle at top left, #e6fffa, #f6f6f3 45%);
+  background: radial-gradient(circle at top left, #efebe4, #f6f6f3 45%);
 }
 
 .card {
@@ -18,13 +26,206 @@ body {
 }
 
 .btn-primary {
-  @apply rounded-lg bg-accent px-4 py-2 font-semibold text-white transition hover:bg-teal-700 disabled:cursor-not-allowed disabled:opacity-60;
+  @apply rounded-lg bg-accent px-4 py-2 font-semibold text-white transition hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-60;
 }
 
 .btn-secondary {
   @apply rounded-lg border border-slate-300 px-4 py-2 font-semibold text-slate-700 transition hover:bg-slate-100;
 }
 
+.btn-ghost {
+  @apply rounded-lg border border-zinc-600 px-3 py-2 text-sm font-semibold text-zinc-200 transition hover:bg-zinc-800;
+}
+
 .input {
   @apply w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-accent;
+}
+
+.forge-shell {
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 80% 5%, rgba(213, 109, 29, 0.18), transparent 30%),
+    linear-gradient(165deg, #101112 0%, #141413 40%, #191714 100%);
+  color: var(--forge-ink);
+  padding: 1.5rem;
+}
+
+.forge-topbar {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  margin: 0 auto 1rem;
+  max-width: 94rem;
+}
+
+.forge-kicker {
+  color: var(--forge-accent-soft);
+  font-size: 0.75rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+.forge-title {
+  font-family: "Teko", "IBM Plex Sans", sans-serif;
+  font-size: clamp(2rem, 3vw, 2.75rem);
+  letter-spacing: 0.04em;
+  line-height: 1;
+}
+
+.forge-layout {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: 20rem minmax(0, 1fr);
+  margin: 0 auto;
+  max-width: 94rem;
+  position: relative;
+}
+
+.forge-sidebar {
+  background: linear-gradient(180deg, #1d1b19 0%, #1a1917 100%);
+  border: 1px solid var(--forge-border);
+  border-radius: 1rem;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.32);
+  height: calc(100vh - 7rem);
+  padding: 1rem;
+  position: sticky;
+  top: 1rem;
+}
+
+.forge-sidebar-head h2 {
+  font-family: "Teko", "IBM Plex Sans", sans-serif;
+  font-size: 1.75rem;
+  letter-spacing: 0.04em;
+}
+
+.forge-sidebar-head p {
+  color: #a89f8a;
+  font-size: 0.75rem;
+  margin-top: -0.25rem;
+}
+
+.forge-input {
+  @apply border-zinc-600 bg-zinc-900/70 text-zinc-100 focus:border-orange-500;
+}
+
+.forge-task-item {
+  background: rgba(26, 25, 23, 0.7);
+  border: 1px solid #413b33;
+  border-radius: 0.75rem;
+  color: #f0eadc;
+  display: block;
+  padding: 0.75rem;
+  text-align: left;
+  transition: border-color 160ms ease, transform 160ms ease;
+  width: 100%;
+}
+
+.forge-task-item:hover {
+  border-color: var(--forge-accent);
+  transform: translateY(-1px);
+}
+
+.forge-task-item-active {
+  border-color: var(--forge-accent);
+  box-shadow: inset 0 0 0 1px rgba(213, 109, 29, 0.25);
+}
+
+.forge-chip {
+  background: rgba(213, 109, 29, 0.18);
+  border: 1px solid rgba(213, 109, 29, 0.5);
+  border-radius: 999px;
+  color: #ffd8b2;
+  font-size: 0.7rem;
+  padding: 0.1rem 0.45rem;
+}
+
+.forge-workspace {
+  display: grid;
+  gap: 1rem;
+}
+
+.forge-panel {
+  @apply border-zinc-700 bg-zinc-900/75 text-zinc-100;
+  backdrop-filter: blur(2px);
+}
+
+.forge-draw-stub {
+  background: #151515;
+  border: 1px solid #494138;
+  border-radius: 0.75rem;
+  overflow: hidden;
+}
+
+.forge-draw-toolbar {
+  background: #22201d;
+  border-bottom: 1px solid #494138;
+  color: #d2cab8;
+  display: flex;
+  font-size: 0.75rem;
+  gap: 1rem;
+  padding: 0.5rem 0.75rem;
+}
+
+.forge-grid {
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.06) 1px, transparent 1px);
+  background-size: 24px 24px;
+  height: 11rem;
+}
+
+.forge-empty {
+  border: 1px dashed #575149;
+  border-radius: 0.75rem;
+  color: #b7ad97;
+  font-size: 0.875rem;
+  padding: 0.75rem;
+}
+
+.forge-block-item {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid #444038;
+  border-radius: 0.75rem;
+  padding: 0.75rem;
+}
+
+.line-clamp-2 {
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  display: -webkit-box;
+  overflow: hidden;
+}
+
+.forge-overlay {
+  background: rgba(0, 0, 0, 0.45);
+  border: 0;
+  inset: 0;
+  position: fixed;
+  z-index: 30;
+}
+
+@media (max-width: 767px) {
+  .forge-shell {
+    padding: 1rem;
+  }
+
+  .forge-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .forge-sidebar {
+    height: calc(100vh - 2rem);
+    left: 0.75rem;
+    max-width: 19rem;
+    position: fixed;
+    top: 1rem;
+    transform: translateX(-130%);
+    transition: transform 200ms ease;
+    width: calc(100vw - 3rem);
+    z-index: 40;
+  }
+
+  .forge-sidebar-open {
+    transform: translateX(0);
+  }
 }
