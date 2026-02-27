@@ -12,3 +12,5 @@ out/
 frontend/web/node_modules/
 frontend/web/dist/
 frontend/web/.angular/
+infra/keys/*.pem
+!infra/keys/.gitkeep
