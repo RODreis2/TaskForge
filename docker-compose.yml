@@ -1,0 +1,81 @@
+services:
+  postgres-user:
+    image: postgres:16-alpine
+    container_name: taskforge-postgres-user
+    environment:
+      POSTGRES_DB: taskforge_user
+      POSTGRES_USER: taskforge
+      POSTGRES_PASSWORD: taskforge
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U taskforge -d taskforge_user"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  postgres-task:
+    image: postgres:16-alpine
+    container_name: taskforge-postgres-task
+    environment:
+      POSTGRES_DB: taskforge_task
+      POSTGRES_USER: taskforge
+      POSTGRES_PASSWORD: taskforge
+    ports:
+      - "5434:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U taskforge -d taskforge_task"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  user-service:
+    build:
+      context: ./backend/user-service
+    container_name: taskforge-user-service
+    environment:
+      DB_USER_URL: jdbc:postgresql://postgres-user:5432/taskforge_user
+      DB_USER_USERNAME: taskforge
+      DB_USER_PASSWORD: taskforge
+      PRIVATE_KEY: /run/keys/private.pem
+      PUBLIC_KEY: /run/keys/public.pem
+      COOKIE_SECURE: "false"
+    volumes:
+      - ./infra/keys:/run/keys:ro
+    depends_on:
+      postgres-user:
+        condition: service_healthy
+
+  task-service:
+    build:
+      context: ./backend/task-service
+    container_name: taskforge-task-service
+    environment:
+      DB_EVENT_URL: jdbc:postgresql://postgres-task:5432/taskforge_task
+      DB_EVENT_USERNAME: taskforge
+      DB_EVENT_PASSWORD: taskforge
+      TASK_PUBLIC_KEY: /run/keys/public.pem
+    volumes:
+      - ./infra/keys:/run/keys:ro
+    depends_on:
+      postgres-task:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend/web
+    container_name: taskforge-frontend
+    expose:
+      - "4200"
+
+  gateway:
+    image: nginx:1.27-alpine
+    container_name: taskforge-gateway
+    ports:
+      - "8088:80"
+    volumes:
+      - ./infra/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - frontend
+      - user-service
+      - task-service
