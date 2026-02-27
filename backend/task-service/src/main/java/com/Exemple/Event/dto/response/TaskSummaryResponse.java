@@ -1,6 +1,5 @@
 package com.Exemple.Event.dto.response;
 
-import com.Exemple.Event.enums.BlockType;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -11,13 +10,10 @@ import java.util.UUID;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class BlockResponse {
+public class TaskSummaryResponse {
     private UUID id;
-    private UUID taskId;
-    private BlockType type;
-    private Integer orderIndex;
-    private String textContent;
-    private String drawingData;
-    private LocalDateTime createdAt;
+    private String title;
+    private String description;
     private LocalDateTime updatedAt;
+    private int blockCount;
 }
