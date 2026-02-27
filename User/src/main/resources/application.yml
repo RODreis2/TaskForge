@@ -11,6 +11,11 @@ spring:
     password: ${DB_USER_PASSWORD}
     driver-class-name: org.postgresql.Driver
 
+  flyway:
+    table: flyway_schema_history_user
+    baseline-on-migrate: true
+    baseline-version: 0
+
   jpa:
     hibernate:
       ddl-auto: validate
