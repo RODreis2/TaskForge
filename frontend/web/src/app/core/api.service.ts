@@ -17,6 +17,7 @@ export interface UserResponse {
 export interface TaskRequest {
   title: string;
   description: string;
+  folderId?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -31,6 +32,7 @@ export interface TaskSummaryResponse {
   id: string;
   title: string;
   description: string;
+  folderId?: string | null;
   updatedAt: string;
   blockCount: number;
 }
@@ -39,9 +41,47 @@ export interface TaskDetailResponse {
   id: string;
   title: string;
   description: string;
+  folderId?: string | null;
   createdAt: string;
   updatedAt: string;
   blocks: BlockResponse[];
+}
+
+export interface FolderResponse {
+  id: string;
+  name: string;
+  parentId?: string | null;
+}
+
+export interface TaskTreeItemResponse {
+  id: string;
+  title: string;
+  description: string;
+  folderId?: string | null;
+  updatedAt: string;
+}
+
+export interface TaskTreeResponse {
+  folders: FolderResponse[];
+  tasks: TaskTreeItemResponse[];
+}
+
+export interface TaskDocumentContent {
+  text: string;
+  drawing: {
+    strokes: Array<{
+      color: string;
+      width: number;
+      points: Array<[number, number]>;
+    }>;
+  };
+}
+
+export interface TaskDocumentResponse {
+  taskId: string;
+  content: TaskDocumentContent;
+  version: number;
+  updatedAt: string;
 }
 
 export interface BlockRequest {
@@ -62,6 +102,20 @@ export interface BlockResponse {
   drawingData?: string;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface CreateFolderRequest {
+  name: string;
+  parentId?: string | null;
+}
+
+export interface MoveTaskRequest {
+  folderId?: string | null;
+}
+
+export interface UpsertTaskDocumentRequest {
+  content: TaskDocumentContent;
+  version?: number | null;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -98,5 +152,25 @@ export class ApiService {
 
   createBlock(taskId: string, payload: BlockRequest): Observable<BlockResponse> {
     return this.http.post<BlockResponse>(`/api/tasks/event/${taskId}/blocks`, payload);
+  }
+
+  getTree(): Observable<TaskTreeResponse> {
+    return this.http.get<TaskTreeResponse>('/api/tasks/event/tree');
+  }
+
+  createFolder(payload: CreateFolderRequest): Observable<FolderResponse> {
+    return this.http.post<FolderResponse>('/api/tasks/event/folders', payload);
+  }
+
+  moveTask(taskId: string, payload: MoveTaskRequest): Observable<TaskSummaryResponse> {
+    return this.http.patch<TaskSummaryResponse>(`/api/tasks/event/tasks/${taskId}/move`, payload);
+  }
+
+  getTaskDocument(taskId: string): Observable<TaskDocumentResponse> {
+    return this.http.get<TaskDocumentResponse>(`/api/tasks/event/tasks/${taskId}/document`);
+  }
+
+  upsertTaskDocument(taskId: string, payload: UpsertTaskDocumentRequest): Observable<TaskDocumentResponse> {
+    return this.http.put<TaskDocumentResponse>(`/api/tasks/event/tasks/${taskId}/document`, payload);
   }
 }
