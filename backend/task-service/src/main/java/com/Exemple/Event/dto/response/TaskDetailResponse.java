@@ -16,6 +16,7 @@ public class TaskDetailResponse {
     private UUID id;
     private String title;
     private String description;
+    private UUID folderId;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private List<BlockResponse> blocks = new ArrayList<>();

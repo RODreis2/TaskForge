@@ -7,14 +7,13 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
-@Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class TaskSummaryResponse {
+@Data
+public class TaskTreeItemResponse {
     private UUID id;
     private String title;
     private String description;
     private UUID folderId;
     private LocalDateTime updatedAt;
-    private int blockCount;
 }

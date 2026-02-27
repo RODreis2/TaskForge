@@ -8,6 +8,7 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 
 @NoArgsConstructor
@@ -17,6 +18,7 @@ public class TaskRequest {
 
     private String title;
     private String description;
+    private UUID folderId;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private List<BlockModel> blocks = new ArrayList<>();
