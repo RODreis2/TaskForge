@@ -1,8 +1,0 @@
-# Use an official OpenJDK runtime as a parent image
-FROM openjdk:21-alpine
-
-# Copy the JAR file to the container
-ADD target/taskservice-0.0.1-SNAPSHOT.jar taskservice-0.0.1-SNAPSHOT.jar
-
-# Run the application
-ENTRYPOINT [ "java","-jar","eventservice-0.0.1-SNAPSHOT.jar" ]

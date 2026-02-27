@@ -50,6 +50,10 @@ public class UserService {
         userRepository.deleteById(id);
     }
 
+    public UserModel getById(UUID id) {
+        return userRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("User not found"));
+    }
+
 
 }
-

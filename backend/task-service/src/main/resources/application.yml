@@ -1,20 +1,16 @@
 server:
-  port: 8081
+  port: 8080
 
 spring:
   application:
-    name: User
+    name: Event
+
 
   datasource:
-    url: ${DB_USER_URL}
-    username: ${DB_USER_USERNAME}
-    password: ${DB_USER_PASSWORD}
+    url: ${DB_EVENT_URL}
+    username: ${DB_EVENT_USERNAME}
+    password: ${DB_EVENT_PASSWORD}
     driver-class-name: org.postgresql.Driver
-
-  flyway:
-    table: flyway_schema_history_user
-    baseline-on-migrate: true
-    baseline-version: 0
 
   jpa:
     hibernate:
@@ -36,5 +32,4 @@ logging:
 
 TaskForge:
   security:
-    private-key: file:${PRIVATE_KEY}
-    public-key: file:${PUBLIC_KEY}
+    public-key: file:${TASK_PUBLIC_KEY}
