@@ -1,9 +1,10 @@
 package com.Exemple.Event.config;
 
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.io.Resource;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.ResourceLoader;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 
@@ -15,9 +16,38 @@ import java.util.Base64;
 public class JwtDecoderConfig {
 
     @Bean
-    public JwtDecoder jwtDecoder(@Value("${TaskForge.security.public-key}") Resource publicKeyResource) {
+    public JwtDecoder jwtDecoder(
+            @Value("${TaskForge.security.public-key}") String publicKeyLocation,
+            ResourceLoader resourceLoader
+    ) {
+        Resource publicKeyResource = resolvePublicKeyResource(publicKeyLocation, resourceLoader);
         RSAPublicKey publicKey = readPublicKey(publicKeyResource);
         return NimbusJwtDecoder.withPublicKey(publicKey).build();
+    }
+
+    static Resource resolvePublicKeyResource(String location, ResourceLoader resourceLoader) {
+        String normalizedLocation = normalizeResourceLocation(location, System.getProperty("user.home"));
+        return resourceLoader.getResource(normalizedLocation);
+    }
+
+    static String normalizeResourceLocation(String location, String userHome) {
+        if (location == null || location.isBlank()) {
+            throw new IllegalStateException(
+                    "TaskForge.security.public-key must be configured with a valid resource location"
+            );
+        }
+
+        String trimmedLocation = location.trim();
+
+        if (trimmedLocation.startsWith("file:~/")) {
+            return "file:" + userHome + trimmedLocation.substring("file:~".length());
+        }
+
+        if (trimmedLocation.startsWith("~/")) {
+            return "file:" + userHome + trimmedLocation.substring(1);
+        }
+
+        return trimmedLocation;
     }
 
     static RSAPublicKey readPublicKey(Resource resource) {

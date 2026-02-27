@@ -33,3 +33,4 @@ logging:
 TaskForge:
   security:
     public-key: file:${TASK_PUBLIC_KEY}
+    dev-auth-bypass: false
