@@ -6,9 +6,9 @@ spring:
     name: User
 
   datasource:
-    url: ${DB_USER_URL}
-    username: ${DB_USER_USERNAME}
-    password: ${DB_USER_PASSWORD}
+    url: ${DB_USER_URL:jdbc:postgresql://localhost:5433/taskforge_user}
+    username: ${DB_USER_USERNAME:taskforge}
+    password: ${DB_USER_PASSWORD:taskforge}
     driver-class-name: org.postgresql.Driver
 
   flyway:
@@ -36,6 +36,6 @@ logging:
 
 TaskForge:
   security:
-    private-key: file:${PRIVATE_KEY}
-    public-key: file:${PUBLIC_KEY}
+    private-key: file:${PRIVATE_KEY:${user.home}/Projects/TaskForge/infra/keys/private.pem}
+    public-key: file:${PUBLIC_KEY:${user.home}/Projects/TaskForge/infra/keys/public.pem}
     cookie-secure: false

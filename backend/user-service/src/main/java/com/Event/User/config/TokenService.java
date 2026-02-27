@@ -3,6 +3,7 @@ package com.Event.User.config;
 import com.Event.User.domain.UserModel;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
+import org.springframework.core.io.ResourceLoader;
 import org.springframework.stereotype.Component;
 import jakarta.annotation.PostConstruct;
 import com.auth0.jwt.JWT;
@@ -24,16 +25,24 @@ import java.util.UUID;
 public class TokenService {
 
     @Value("${TaskForge.security.private-key}")
-    private Resource privateKeyResource;
+    private String privateKeyLocation;
 
     @Value("${TaskForge.security.public-key}")
-    private Resource publicKeyResource;
+    private String publicKeyLocation;
+
+    private final ResourceLoader resourceLoader;
 
     private RSAPrivateKey privateKey;
     private RSAPublicKey publicKey;
 
+    public TokenService(ResourceLoader resourceLoader) {
+        this.resourceLoader = resourceLoader;
+    }
+
     @PostConstruct
     public void init() throws Exception {
+        Resource privateKeyResource = resolveResource(privateKeyLocation);
+        Resource publicKeyResource = resolveResource(publicKeyLocation);
         privateKey = loadPrivateKey(privateKeyResource);
         publicKey = loadPublicKey(publicKeyResource);
     }
@@ -76,6 +85,21 @@ public class TokenService {
     }
 
     // 🔧 Métodos auxiliares para ler PEM
+
+    private Resource resolveResource(String location) {
+        String userHome = System.getProperty("user.home");
+        String trimmed = location == null ? "" : location.trim();
+
+        if (trimmed.startsWith("file:~/")) {
+            return resourceLoader.getResource("file:" + userHome + trimmed.substring("file:~".length()));
+        }
+
+        if (trimmed.startsWith("~/")) {
+            return resourceLoader.getResource("file:" + userHome + trimmed.substring(1));
+        }
+
+        return resourceLoader.getResource(trimmed);
+    }
 
     private RSAPrivateKey loadPrivateKey(Resource resource) throws Exception {
         String key = new String(resource.getInputStream().readAllBytes())
