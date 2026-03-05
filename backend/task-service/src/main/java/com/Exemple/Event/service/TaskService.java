@@ -26,6 +26,7 @@ import com.Exemple.Event.repository.TaskRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -35,6 +36,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 import static org.springframework.http.HttpStatus.CONFLICT;
+import static org.springframework.http.HttpStatus.BAD_REQUEST;
 import static org.springframework.http.HttpStatus.NOT_FOUND;
 
 @Service
@@ -97,18 +99,27 @@ public class TaskService {
     }
 
     public FolderResponse createFolder(UUID ownerId, CreateFolderRequest request) {
+        String normalizedName = request.getName() == null ? "" : request.getName().trim();
+        if (normalizedName.isBlank()) {
+            throw new ResponseStatusException(BAD_REQUEST, "Nome da pasta é obrigatório");
+        }
+
         FolderModel parent = resolveFolder(ownerId, request.getParentId());
 
         FolderModel folder = FolderModel.builder()
                 .ownerId(ownerId)
-                .name(request.getName())
+                .name(normalizedName)
                 .parent(parent)
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
                 .build();
 
-        FolderModel saved = folderRepository.save(folder);
-        return new FolderResponse(saved.getId(), saved.getName(), saved.getParent() != null ? saved.getParent().getId() : null);
+        try {
+            FolderModel saved = folderRepository.save(folder);
+            return new FolderResponse(saved.getId(), saved.getName(), saved.getParent() != null ? saved.getParent().getId() : null);
+        } catch (DataIntegrityViolationException ex) {
+            throw new ResponseStatusException(CONFLICT, "Já existe uma pasta com esse nome neste nível");
+        }
     }
 
     public TaskSummaryResponse moveTask(UUID ownerId, UUID taskId, MoveTaskRequest request) {
