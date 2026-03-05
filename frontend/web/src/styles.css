@@ -601,6 +601,100 @@ body {
   padding: 1rem;
 }
 
+.obs-workspace-wrap {
+  border: 1px solid #2c303b;
+  border-radius: 0.8rem;
+  background: #161922;
+  padding: 0.8rem;
+}
+
+.obs-workspace-board {
+  border: 1px solid #2f3442;
+  border-radius: 0.7rem;
+  background: #0f1521;
+  position: relative;
+  height: calc(100vh - 9.6rem);
+  min-height: 24rem;
+  overflow: hidden;
+  cursor: crosshair;
+}
+
+.obs-workspace-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+}
+
+.obs-workspace-block {
+  position: absolute;
+  width: 16rem;
+  min-height: 6.6rem;
+  background: rgba(26, 34, 48, 0.94);
+  border: 1px solid #385182;
+  border-radius: 0.6rem;
+  padding: 0.55rem;
+  backdrop-filter: blur(2px);
+  z-index: 2;
+}
+
+.obs-workspace-block-draw {
+  border-color: #4a6bb0;
+  background: rgba(20, 32, 52, 0.94);
+}
+
+.obs-workspace-block-head {
+  align-items: center;
+  color: #afbdd9;
+  display: flex;
+  font-size: 0.75rem;
+  justify-content: space-between;
+  margin-bottom: 0.45rem;
+}
+
+.obs-workspace-block-body {
+  color: #d6deef;
+  font-size: 0.84rem;
+  line-height: 1.45;
+}
+
+.obs-workspace-block-input {
+  width: 100%;
+  min-height: 5rem;
+  resize: vertical;
+  border: 1px solid #46608f;
+  border-radius: 0.45rem;
+  background: #111a29;
+  color: #dce5f7;
+  padding: 0.45rem 0.5rem;
+}
+
+.obs-context-menu {
+  position: absolute;
+  z-index: 5;
+  background: #1c2534;
+  border: 1px solid #3e557f;
+  border-radius: 0.55rem;
+  min-width: 12.5rem;
+  overflow: hidden;
+  box-shadow: 0 14px 28px rgba(0, 0, 0, 0.35);
+}
+
+.obs-context-menu button {
+  width: 100%;
+  text-align: left;
+  border: 0;
+  padding: 0.55rem 0.65rem;
+  color: #dce5f7;
+  background: transparent;
+  font-size: 0.84rem;
+}
+
+.obs-context-menu button:hover {
+  background: #2b3a55;
+}
+
 .obs-muted {
   color: #8f96a8;
   font-size: 0.85rem;
@@ -632,6 +726,10 @@ body {
 
   .obs-work {
     padding: 0.75rem;
+  }
+
+  .obs-workspace-board {
+    height: calc(100vh - 8.2rem);
   }
 
   .obs-work-head {
