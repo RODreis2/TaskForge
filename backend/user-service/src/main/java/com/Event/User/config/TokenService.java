@@ -1,25 +1,26 @@
 package com.Event.User.config;
 
 import com.Event.User.domain.UserModel;
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtException;
+import io.jsonwebtoken.Jwts;
+import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.ResourceLoader;
 import org.springframework.stereotype.Component;
-import jakarta.annotation.PostConstruct;
-import com.auth0.jwt.JWT;
-import com.auth0.jwt.algorithms.Algorithm;
-import com.auth0.jwt.exceptions.JWTVerificationException;
-import com.auth0.jwt.interfaces.DecodedJWT;
-import java.time.Instant;
+
+import java.nio.charset.StandardCharsets;
 import java.security.KeyFactory;
+import java.security.PrivateKey;
+import java.security.PublicKey;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.X509EncodedKeySpec;
-import java.security.interfaces.RSAPrivateKey;
-import java.security.interfaces.RSAPublicKey;
+import java.time.Instant;
 import java.util.Base64;
+import java.util.Date;
 import java.util.Optional;
 import java.util.UUID;
-
 
 @Component
 public class TokenService {
@@ -32,8 +33,8 @@ public class TokenService {
 
     private final ResourceLoader resourceLoader;
 
-    private RSAPrivateKey privateKey;
-    private RSAPublicKey publicKey;
+    private PrivateKey privateKey;
+    private PublicKey publicKey;
 
     public TokenService(ResourceLoader resourceLoader) {
         this.resourceLoader = resourceLoader;
@@ -41,50 +42,44 @@ public class TokenService {
 
     @PostConstruct
     public void init() throws Exception {
-        Resource privateKeyResource = resolveResource(privateKeyLocation);
-        Resource publicKeyResource = resolveResource(publicKeyLocation);
-        privateKey = loadPrivateKey(privateKeyResource);
-        publicKey = loadPublicKey(publicKeyResource);
+        privateKey = loadPrivateKey(resolveResource(privateKeyLocation));
+        publicKey = loadPublicKey(resolveResource(publicKeyLocation));
     }
 
     public String generateToken(UserModel user) {
-
-        Algorithm algorithm = Algorithm.RSA256(publicKey, privateKey);
-
-        return JWT.create()
-                .withSubject(user.getEmail())
-                .withClaim("userId", user.getId().toString())
-                .withClaim("name", user.getName())
-                .withIssuer("Api TaskForge")
-                .withIssuedAt(Instant.now())
-                .withExpiresAt(Instant.now().plusSeconds(86400))
-                .sign(algorithm);
+        Instant issuedAt = Instant.now();
+        return Jwts.builder()
+                .subject(user.getEmail())
+                .claim("userId", user.getId().toString())
+                .claim("name", user.getName())
+                .issuer("Api TaskForge")
+                .issuedAt(Date.from(issuedAt))
+                .expiration(Date.from(issuedAt.plusSeconds(86400)))
+                .signWith(privateKey, Jwts.SIG.EdDSA)
+                .compact();
     }
 
     public Optional<JWTuserData> verifyToken(String token) {
         try {
-
-            Algorithm algorithm = Algorithm.RSA256(publicKey, null);
-
-            DecodedJWT jwt = JWT.require(algorithm)
-                    .withIssuer("Api TaskForge")
+            Claims claims = Jwts.parser()
+                    .verifyWith(publicKey)
+                    .requireIssuer("Api TaskForge")
                     .build()
-                    .verify(token);
+                    .parseSignedClaims(token)
+                    .getPayload();
 
-            return Optional.of(
-                    new JWTuserData(
-                            UUID.fromString(jwt.getClaim("userId").asString()),
-                            jwt.getClaim("name").asString(),
-                            jwt.getSubject()
-                    )
-            );
+            String userId = claims.get("userId", String.class);
+            String name = claims.get("name", String.class);
+            String email = claims.getSubject();
+            if (userId == null || userId.isBlank() || email == null || email.isBlank()) {
+                return Optional.empty();
+            }
 
-        } catch (JWTVerificationException ex) {
+            return Optional.of(new JWTuserData(UUID.fromString(userId), name, email));
+        } catch (JwtException | IllegalArgumentException ex) {
             return Optional.empty();
         }
     }
-
-    // 🔧 Métodos auxiliares para ler PEM
 
     private Resource resolveResource(String location) {
         String userHome = System.getProperty("user.home");
@@ -101,33 +96,38 @@ public class TokenService {
         return resourceLoader.getResource(trimmed);
     }
 
-    private RSAPrivateKey loadPrivateKey(Resource resource) throws Exception {
-        String key = new String(resource.getInputStream().readAllBytes())
+    private PrivateKey loadPrivateKey(Resource resource) throws Exception {
+        String key = normalizeBase64(readResource(resource)
                 .replace("-----BEGIN PRIVATE KEY-----", "")
-                .replace("-----END PRIVATE KEY-----", "")
-                .replaceAll("\\s", "");
-
+                .replace("-----END PRIVATE KEY-----", ""));
         byte[] decoded = Base64.getDecoder().decode(key);
-
         PKCS8EncodedKeySpec keySpec = new PKCS8EncodedKeySpec(decoded);
-
-        KeyFactory kf = KeyFactory.getInstance("RSA");
-
-        return (RSAPrivateKey) kf.generatePrivate(keySpec);
+        return KeyFactory.getInstance("Ed25519").generatePrivate(keySpec);
     }
 
-    private RSAPublicKey loadPublicKey(Resource resource) throws Exception {
-        String key = new String(resource.getInputStream().readAllBytes())
+    private PublicKey loadPublicKey(Resource resource) throws Exception {
+        String key = normalizeBase64(readResource(resource)
                 .replace("-----BEGIN PUBLIC KEY-----", "")
-                .replace("-----END PUBLIC KEY-----", "")
+                .replace("-----END PUBLIC KEY-----", ""));
+        byte[] decoded = Base64.getDecoder().decode(key);
+        X509EncodedKeySpec keySpec = new X509EncodedKeySpec(decoded);
+        return KeyFactory.getInstance("Ed25519").generatePublic(keySpec);
+    }
+
+    private String readResource(Resource resource) throws Exception {
+        return new String(resource.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+    }
+
+    private String normalizeBase64(String value) {
+        String normalized = value
+                .replace("\"", "")
+                .replace("'", "")
                 .replaceAll("\\s", "");
 
-        byte[] decoded = Base64.getDecoder().decode(key);
-
-        X509EncodedKeySpec keySpec = new X509EncodedKeySpec(decoded);
-
-        KeyFactory kf = KeyFactory.getInstance("RSA");
-
-        return (RSAPublicKey) kf.generatePublic(keySpec);
+        int remainder = normalized.length() % 4;
+        if (remainder != 0) {
+            normalized = normalized + "=".repeat(4 - remainder);
+        }
+        return normalized;
     }
 }

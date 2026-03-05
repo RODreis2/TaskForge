@@ -6,15 +6,15 @@
 - `backend/task-service`: task and block management (Spring Boot)
 - `frontend/web`: Angular frontend (Tailwind CSS)
 - `infra/nginx`: API Gateway (Nginx)
-- `infra/keys`: RSA keys used by JWT signing/validation
+- `infra/keys`: Ed25519 keys used by JWT signing/validation
 
 ## Local run with Docker Compose
 
-1. Generate RSA keys in `infra/keys`:
+1. Generate Ed25519 keys in `infra/keys`:
 
 ```bash
-openssl genpkey -algorithm RSA -out infra/keys/private.pem -pkeyopt rsa_keygen_bits:2048
-openssl rsa -in infra/keys/private.pem -pubout -out infra/keys/public.pem
+openssl genpkey -algorithm ED25519 -out infra/keys/private.pem
+openssl pkey -in infra/keys/private.pem -pubout -out infra/keys/public.pem
 ```
 
 2. Start all services:
