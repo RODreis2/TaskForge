@@ -11,10 +11,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
-import java.security.interfaces.RSAPublicKey;
+import java.security.interfaces.EdECPublicKey;
 import java.util.Base64;
+import java.util.Arrays;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -22,21 +22,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class JwtDecoderConfigTest {
 
     @Test
-    void normalizePemToBase64RemovesHeadersQuotesAndWhitespace() throws Exception {
-        RSAPublicKey key = generatedPublicKey();
-        String base64 = Base64.getEncoder().encodeToString(key.getEncoded());
-        String pemLike = "'-----BEGIN PUBLIC KEY-----\n" + base64 + "\n-----END PUBLIC KEY-----'";
-
-        String normalized = JwtDecoderConfig.normalizePemToBase64(pemLike);
-
-        assertEquals(base64, normalized);
-    }
-
-    @Test
-    void decodeRsaPublicKeyThrowsClearMessageForInvalidBase64() {
+    void decodeEdDsaPublicKeyThrowsClearMessageForInvalidBase64() {
         IllegalStateException ex = assertThrows(
                 IllegalStateException.class,
-                () -> JwtDecoderConfig.decodeRsaPublicKey("file:/tmp/public_key.pem")
+                () -> JwtDecoderConfig.decodeEdDsaPublicKey("file:/tmp/public_key.pem")
         );
 
         assertTrue(ex.getMessage().contains("TaskForge.security.public-key"));
@@ -45,18 +34,16 @@ class JwtDecoderConfigTest {
 
     @Test
     void readPublicKeyLoadsFromResource() throws Exception {
-        RSAPublicKey original = generatedPublicKey();
+        EdECPublicKey original = generatedPublicKey();
         String pem = toPem(original);
 
-        RSAPublicKey parsed = JwtDecoderConfig.readPublicKey(new ByteArrayResource(pem.getBytes()));
-
-        assertEquals(original.getModulus(), parsed.getModulus());
-        assertEquals(original.getPublicExponent(), parsed.getPublicExponent());
+        EdECPublicKey parsed = JwtDecoderConfig.readPublicKey(new ByteArrayResource(pem.getBytes()));
+        assertTrue(Arrays.equals(original.getEncoded(), parsed.getEncoded()));
     }
 
     @Test
     void jwtDecoderBeanIsCreatedFromFileProperty(@TempDir Path tempDir) throws Exception {
-        RSAPublicKey key = generatedPublicKey();
+        EdECPublicKey key = generatedPublicKey();
         Path pemFile = tempDir.resolve("public_key.pem");
         Files.writeString(pemFile, toPem(key));
 
@@ -73,14 +60,29 @@ class JwtDecoderConfigTest {
         }
     }
 
-    private static RSAPublicKey generatedPublicKey() throws Exception {
+    @Test
+    void decodeEdDsaPublicKeyThrowsClearMessageForRsaKey() throws Exception {
         KeyPairGenerator generator = KeyPairGenerator.getInstance("RSA");
         generator.initialize(2048);
-        KeyPair pair = generator.generateKeyPair();
-        return (RSAPublicKey) pair.getPublic();
+        KeyPair rsaPair = generator.generateKeyPair();
+        String rsaBase64 = Base64.getEncoder().encodeToString(rsaPair.getPublic().getEncoded());
+
+        IllegalStateException ex = assertThrows(
+                IllegalStateException.class,
+                () -> JwtDecoderConfig.decodeEdDsaPublicKey(rsaBase64)
+        );
+
+        assertTrue(ex.getMessage().contains("is RSA"));
+        assertTrue(ex.getMessage().contains("Ed25519"));
     }
 
-    private static String toPem(RSAPublicKey key) {
+    private static EdECPublicKey generatedPublicKey() throws Exception {
+        KeyPairGenerator generator = KeyPairGenerator.getInstance("Ed25519");
+        KeyPair pair = generator.generateKeyPair();
+        return (EdECPublicKey) pair.getPublic();
+    }
+
+    private static String toPem(EdECPublicKey key) {
         String base64 = Base64.getMimeEncoder(64, "\n".getBytes()).encodeToString(key.getEncoded());
         return "-----BEGIN PUBLIC KEY-----\n" + base64 + "\n-----END PUBLIC KEY-----\n";
     }

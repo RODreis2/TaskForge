@@ -1,16 +1,28 @@
 package com.Exemple.Event.config;
 
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtException;
+import io.jsonwebtoken.Jwts;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.ResourceLoader;
+import org.springframework.security.oauth2.jwt.BadJwtException;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
-import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 
 import java.io.IOException;
-import java.security.interfaces.RSAPublicKey;
+import java.nio.charset.StandardCharsets;
+import java.security.KeyFactory;
+import java.security.PublicKey;
+import java.security.interfaces.EdECPublicKey;
+import java.security.spec.InvalidKeySpecException;
+import java.security.spec.X509EncodedKeySpec;
+import java.time.Instant;
 import java.util.Base64;
+import java.util.HashMap;
+import java.util.Map;
 
 @Configuration
 public class JwtDecoderConfig {
@@ -21,8 +33,26 @@ public class JwtDecoderConfig {
             ResourceLoader resourceLoader
     ) {
         Resource publicKeyResource = resolvePublicKeyResource(publicKeyLocation, resourceLoader);
-        RSAPublicKey publicKey = readPublicKey(publicKeyResource);
-        return NimbusJwtDecoder.withPublicKey(publicKey).build();
+        EdECPublicKey publicKey = readPublicKey(publicKeyResource);
+
+        return token -> {
+            try {
+                var jws = Jwts.parser()
+                        .verifyWith(publicKey)
+                        .build()
+                        .parseSignedClaims(token);
+
+                Claims claims = jws.getPayload();
+                Instant issuedAt = claims.getIssuedAt() == null ? Instant.now() : claims.getIssuedAt().toInstant();
+                Instant expiresAt = claims.getExpiration() == null ? issuedAt.plusSeconds(86400) : claims.getExpiration().toInstant();
+                Map<String, Object> headers = new HashMap<>(jws.getHeader());
+                Map<String, Object> claimMap = new HashMap<>(claims);
+
+                return new Jwt(token, issuedAt, expiresAt, headers, claimMap);
+            } catch (JwtException | IllegalArgumentException ex) {
+                throw new BadJwtException("Invalid EdDSA JWT", ex);
+            }
+        };
     }
 
     static Resource resolvePublicKeyResource(String location, ResourceLoader resourceLoader) {
@@ -50,15 +80,15 @@ public class JwtDecoderConfig {
         return trimmedLocation;
     }
 
-    static RSAPublicKey readPublicKey(Resource resource) {
+    static EdECPublicKey readPublicKey(Resource resource) {
         String pem = readPem(resource);
         String normalizedBase64 = normalizePemToBase64(pem);
-        return decodeRsaPublicKey(normalizedBase64);
+        return decodeEdDsaPublicKey(normalizedBase64);
     }
 
     static String readPem(Resource resource) {
         try {
-            return new String(resource.getInputStream().readAllBytes());
+            return new String(resource.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
         } catch (IOException e) {
             String description = resource.getDescription();
             throw new IllegalStateException(
@@ -78,7 +108,7 @@ public class JwtDecoderConfig {
 
         if (key.isBlank()) {
             throw new IllegalStateException(
-                    "TaskForge.security.public-key resolved to empty content; expected RSA public key in PEM/Base64"
+                    "TaskForge.security.public-key resolved to empty content; expected Ed25519 public key in PEM/Base64"
             );
         }
 
@@ -90,28 +120,51 @@ public class JwtDecoderConfig {
         return key;
     }
 
-    static RSAPublicKey decodeRsaPublicKey(String normalizedBase64) {
+    static EdECPublicKey decodeEdDsaPublicKey(String normalizedBase64) {
+        byte[] decoded;
         try {
-            byte[] decoded = Base64.getDecoder().decode(normalizedBase64);
-            var keyFactory = java.security.KeyFactory.getInstance("RSA");
-            var keySpec = new java.security.spec.X509EncodedKeySpec(decoded);
-            var publicKey = keyFactory.generatePublic(keySpec);
-            if (!(publicKey instanceof RSAPublicKey rsaPublicKey)) {
-                throw new IllegalStateException(
-                        "TaskForge.security.public-key must be an RSA public key (X.509/SPKI)"
-                );
-            }
-            return rsaPublicKey;
+            decoded = Base64.getDecoder().decode(normalizedBase64);
         } catch (IllegalArgumentException e) {
             throw new IllegalStateException(
                     "TaskForge.security.public-key does not contain valid Base64/PEM content",
                     e
             );
-        } catch (Exception e) {
+        }
+
+        try {
+            PublicKey publicKey = KeyFactory.getInstance("Ed25519").generatePublic(new X509EncodedKeySpec(decoded));
+            if (!(publicKey instanceof EdECPublicKey edECPublicKey)) {
+                throw new IllegalStateException(
+                        "TaskForge.security.public-key must be an Ed25519 public key (X.509/SPKI)"
+                );
+            }
+            return edECPublicKey;
+        } catch (InvalidKeySpecException e) {
+            if (isRsaPublicKey(decoded)) {
+                throw new IllegalStateException(
+                        "TaskForge.security.public-key is RSA, but task-service requires an Ed25519 public key (X.509/SPKI). " +
+                                "Use the same Ed25519 keypair as user-service.",
+                        e
+                );
+            }
             throw new IllegalStateException(
-                    "TaskForge.security.public-key is not a valid RSA public key (X.509/SPKI)",
+                    "TaskForge.security.public-key is not a valid Ed25519 public key (X.509/SPKI)",
                     e
             );
+        } catch (Exception e) {
+            throw new IllegalStateException(
+                    "TaskForge.security.public-key is not a valid Ed25519 public key (X.509/SPKI)",
+                    e
+            );
+        }
+    }
+
+    static boolean isRsaPublicKey(byte[] encoded) {
+        try {
+            KeyFactory.getInstance("RSA").generatePublic(new X509EncodedKeySpec(encoded));
+            return true;
+        } catch (Exception ignored) {
+            return false;
         }
     }
 }
