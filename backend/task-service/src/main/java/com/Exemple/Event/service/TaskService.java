@@ -23,12 +23,12 @@ import com.Exemple.Event.repository.BlockRepository;
 import com.Exemple.Event.repository.FolderRepository;
 import com.Exemple.Event.repository.TaskDocumentRepository;
 import com.Exemple.Event.repository.TaskRepository;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 
 import java.time.LocalDateTime;
 import java.util.List;
