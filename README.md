@@ -1,44 +1,58 @@
-# TaskForge Monorepo
+# TaskForge
 
-## Structure
+TaskForge is a task workspace application for organizing work and capturing ideas in one place.
 
-- `backend/user-service`: authentication and user management (Spring Boot)
-- `backend/task-service`: task and block management (Spring Boot)
-- `frontend/web`: Angular frontend (Tailwind CSS)
-- `infra/nginx`: API Gateway (Nginx)
-- `infra/keys`: Ed25519 keys used by JWT signing/validation
+## What the project does
 
-## Local run with Docker Compose
+TaskForge allows users to:
+- create an account and authenticate securely
+- create and manage tasks
+- organize tasks in folders/tree structures
+- open task workspaces with text and drawing content
+- edit task documents that combine notes and freehand sketches
 
-1. Generate Ed25519 keys in `infra/keys`:
+## High-level view
 
+The project is built as a monorepo with:
+- a user service for authentication and account management
+- a task service for tasks, folders, blocks, and documents
+- a web frontend for login, registration, and dashboard workflows
+- an API gateway that routes frontend and backend traffic through one entrypoint
+
+## How to run
+
+### Recommended: Docker Compose
+
+1. Generate JWT keys:
 ```bash
 openssl genpkey -algorithm ED25519 -out infra/keys/private.pem
 openssl pkey -in infra/keys/private.pem -pubout -out infra/keys/public.pem
 ```
 
-2. Start all services:
-
+2. Start everything:
 ```bash
 docker compose up --build
 ```
 
-3. Access app and APIs:
+3. Open:
+- `http://localhost:8088`
 
-- Frontend + gateway: `http://localhost:8088`
-- User service (internal via gateway): `/api/users/*`
-- Task service (internal via gateway): `/api/tasks/*`
+### Optional: run services locally
 
-## Auth flow
+Requirements:
+- JDK 21
+- Node.js 20+
+- PostgreSQL
 
-- `POST /api/users/login` sets `access_token` cookie (`HttpOnly`, `SameSite=Lax`).
-- Frontend sends requests with `withCredentials: true`.
-- Gateway reads the cookie and forwards `Authorization: Bearer <token>` to task service routes.
-- `POST /api/users/logout` expires the cookie.
-- `GET /api/users/me` resolves current authenticated user.
+Run backend services:
+```bash
+cd backend/user-service && ./mvnw spring-boot:run
+cd backend/task-service && ./mvnw spring-boot:run
+```
 
-## Frontend MVP pages
-
-- `/login`
-- `/register`
-- `/dashboard` (protected): create task and add block
+Run frontend:
+```bash
+cd frontend/web
+npm install
+npm start
+```
