@@ -2,57 +2,19 @@ import { AfterViewInit, Component, ElementRef, HostListener, OnDestroy, OnInit, 
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule } from '@angular/forms';
 import { Subject, EMPTY, debounceTime, switchMap, tap, catchError, takeUntil } from 'rxjs';
-import { AuthService } from '../../core/auth.service';
-import { ApiService, BlockResponse, FolderResponse, TaskDetailResponse, TaskDocumentResponse, TaskTreeItemResponse } from '../../core/api.service';
-
-type TreeRow =
-  | {
-      kind: 'folder';
-      id: string;
-      name: string;
-      prefix: string;
-      expanded: boolean;
-      selected: boolean;
-      matched: boolean;
-    }
-  | {
-      kind: 'task';
-      id: string;
-      title: string;
-      folderId: string | null;
-      prefix: string;
-      active: boolean;
-      matched: boolean;
-    };
-
-type Stroke = {
-  color: string;
-  width: number;
-  points: Array<[number, number]>;
-};
-
-type WorkspaceBlock = {
-  id: string;
-  type: 'TEXT' | 'DRAW';
-  orderIndex: number;
-  textContent: string;
-  drawingData: string;
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-};
-
-type WorkspaceImage = {
-  id: string;
-  dataUrl: string;
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-};
-
-type SaveState = 'idle' | 'saving' | 'saved' | 'error';
+import { AuthService } from '../../../../core/auth.service';
+import {
+  ApiService,
+  BlockResponse,
+  FolderResponse,
+  TaskDetailResponse,
+  TaskDocumentResponse,
+  TaskResponse,
+  TaskSummaryResponse,
+  TaskTreeItemResponse,
+  TaskTreeResponse
+} from '../../../../core/api.service';
+import { SaveState, Stroke, TreeContextMenuState, TreeRow, WorkspaceBlock, WorkspaceImage } from '../../models/dashboard.models';
 
 @Component({
   selector: 'app-dashboard',
@@ -60,32 +22,35 @@ type SaveState = 'idle' | 'saving' | 'saved' | 'error';
   imports: [CommonModule, ReactiveFormsModule],
   template: `
     <main class="obs-shell" [class.obs-shell-collapsed]="sidebarCollapsed">
-      <aside class="obs-tree" [class.obs-tree-open]="sidebarOpen">
+      <aside class="obs-tree" [class.obs-tree-open]="sidebarOpen" (contextmenu)="onTreeAreaContextMenu($event)">
         <div class="obs-tree-head">
           <h1>TaskForge</h1>
-          <div class="flex items-center gap-2">
-            <button class="btn-ghost !px-2 !py-1" type="button" (click)="createFolder()">+ pasta</button>
+          <div class="flex items-center gap-1">
+            <button class="obs-icon-btn" type="button" aria-label="Criar pasta" (click)="createFolder()">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M3 6.5h7l2 2H21v9.5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6.5Z" />
+                <path d="M12 11v6m-3-3h6" />
+              </svg>
+            </button>
+            <button class="obs-icon-btn" type="button" aria-label="Criar task" (click)="createTask()">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M5 4h11l3 3v13H5z" />
+                <path d="M16 4v4h4" />
+                <path d="M12 11v6m-3-3h6" />
+              </svg>
+            </button>
             <button class="btn-ghost !px-2 !py-1" type="button" (click)="logout()">Sair</button>
           </div>
         </div>
 
-        <div class="obs-tree-create">
-          <input
-            class="input obs-input !py-1 !text-sm"
-            type="text"
-            placeholder="Nova task nesta pasta"
-            [value]="newTaskTitle"
-            (input)="newTaskTitle = $any($event.target).value"
-            (keydown.enter)="createTask()"
-          />
-          <button class="btn-primary !px-2 !py-1 !text-xs" type="button" (click)="createTask()">Criar</button>
-        </div>
-
-        <div class="obs-tree-scroll">
+        <div class="obs-tree-scroll" (click)="onTreeAreaClick($event)">
           <button
             *ngFor="let row of treeRows"
             type="button"
             class="obs-tree-row"
+            [attr.data-kind]="row.kind"
+            [attr.data-id]="row.id"
+            [attr.data-folder-id]="row.kind === 'task' ? (row.folderId ?? '') : ''"
             [class.obs-tree-row-folder]="row.kind === 'folder'"
             [class.obs-tree-row-active]="row.kind === 'task' ? row.active : row.selected"
             [class.obs-tree-row-match]="row.matched && !!searchTerm"
@@ -96,11 +61,27 @@ type SaveState = 'idle' | 'saving' | 'saved' | 'error';
             <span *ngIf="row.kind === 'task'" class="obs-tree-label">{{ row.title || '(sem título)' }}</span>
           </button>
         </div>
+
+        <div
+          *ngIf="treeContextMenu.open"
+          class="obs-context-menu obs-context-menu-fixed"
+          [style.left.px]="treeContextMenu.x"
+          [style.top.px]="treeContextMenu.y"
+          (click)="$event.stopPropagation()"
+        >
+          <button type="button" *ngIf="treeContextMenu.target !== 'task'" (click)="onTreeMenuCreateFolder()">Criar pasta</button>
+          <button type="button" (click)="onTreeMenuCreateTask()">Criar task</button>
+          <button type="button" *ngIf="treeContextMenu.target === 'folder'" (click)="onTreeMenuRenameFolder()">Renomear pasta</button>
+          <button type="button" *ngIf="treeContextMenu.target === 'task'" (click)="onTreeMenuRenameTask()">Renomear task</button>
+          <button type="button" *ngIf="treeContextMenu.target === 'task'" (click)="onTreeMenuMoveTaskToRoot()">Mover task para raiz</button>
+          <button type="button" *ngIf="treeContextMenu.target === 'folder'" (click)="onTreeMenuDeleteFolder()">Deletar pasta</button>
+          <button type="button" *ngIf="treeContextMenu.target === 'task'" (click)="onTreeMenuDeleteTask()">Deletar task</button>
+        </div>
       </aside>
 
       <button *ngIf="sidebarOpen" type="button" class="forge-overlay md:hidden" (click)="toggleSidebarMobile()"></button>
 
-      <section class="obs-work" (click)="closeContextMenu()">
+      <section class="obs-work" (click)="closeMenus()">
         <header class="obs-work-head">
           <div class="flex items-center gap-2">
             <button class="btn-ghost md:hidden" type="button" (click)="toggleSidebarMobile()">Pastas</button>
@@ -234,12 +215,33 @@ type SaveState = 'idle' | 'saving' | 'saved' | 'error';
           <article class="obs-empty">Escolha ou crie uma task para abrir o quadro.</article>
         </ng-template>
       </section>
+
+      <div *ngIf="dialog.open" class="obs-dialog-backdrop" (click)="onDialogCancel()">
+        <div class="obs-dialog" (click)="$event.stopPropagation()">
+          <h3 class="obs-dialog-title">{{ dialog.title }}</h3>
+          <label *ngIf="dialog.mode === 'text'" class="obs-dialog-label">
+            {{ dialog.label }}
+            <input
+              class="input obs-input"
+              type="text"
+              [placeholder]="dialog.placeholder"
+              [value]="dialog.value"
+              (input)="dialog.value = $any($event.target).value"
+              (keydown.enter)="onDialogConfirm()"
+            />
+          </label>
+          <p *ngIf="dialog.mode === 'confirm'" class="obs-dialog-message">{{ dialog.label }}</p>
+          <div class="obs-dialog-actions">
+            <button type="button" class="btn-ghost" (click)="onDialogCancel()">Cancelar</button>
+            <button type="button" class="btn-primary" (click)="onDialogConfirm()">{{ dialog.confirmText }}</button>
+          </div>
+        </div>
+      </div>
     </main>
   `
 })
 export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   private static readonly EXPANDED_KEY = 'taskforge.tree.expanded';
-  private static readonly INBOX_ID = '__inbox__';
   private static readonly BOARD_WIDTH = 4000;
   private static readonly BOARD_HEIGHT = 3000;
   private static readonly BLOCK_MIN_WIDTH = 180;
@@ -260,11 +262,10 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   blocks: WorkspaceBlock[] = [];
   images: WorkspaceImage[] = [];
 
-  expandedFolderIds = new Set<string>([DashboardComponent.INBOX_ID]);
+  expandedFolderIds = new Set<string>();
 
   selectedFolderId: string | null = null;
   activeTaskId = '';
-  newTaskTitle = '';
   searchTerm = '';
   saveState: SaveState = 'idle';
 
@@ -272,6 +273,16 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   sidebarCollapsed = false;
 
   contextMenu = { open: false, x: 0, y: 0, blockX: 60, blockY: 80 };
+  treeContextMenu: TreeContextMenuState = { open: false, x: 0, y: 0, target: null, targetId: null, targetFolderId: null };
+  dialog = {
+    open: false,
+    mode: 'text' as 'text' | 'confirm',
+    title: '',
+    label: '',
+    placeholder: '',
+    value: '',
+    confirmText: 'OK'
+  };
   brushColor = '#8fb3ff';
   brushSize = 2;
   boardWidth = DashboardComponent.BOARD_WIDTH;
@@ -299,6 +310,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   private documentVersion: number | null = null;
   private saveQueue$ = new Subject<void>();
   private destroy$ = new Subject<void>();
+  private dialogResolver: ((result: string | boolean | null) => void) | null = null;
 
   constructor(
     private readonly api: ApiService,
@@ -329,9 +341,16 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     this.renderBoardCanvas();
   }
 
-  @HostListener('document:click')
-  onDocumentClick(): void {
-    this.closeContextMenu();
+  @HostListener('document:click', ['$event'])
+  onDocumentClick(event: MouseEvent): void {
+    if (event.button === 2) {
+      return;
+    }
+    const target = event.target as HTMLElement | null;
+    if (target?.closest('.obs-tree-scroll') || target?.closest('.obs-context-menu')) {
+      return;
+    }
+    this.closeMenus();
   }
 
   @HostListener('document:keydown', ['$event'])
@@ -401,8 +420,8 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     this.zoomLevel = 1;
   }
 
-  createFolder(): void {
-    const name = window.prompt('Nome da pasta');
+  async createFolder(parentId: string | null = this.selectedFolderId): Promise<void> {
+    const name = await this.openTextDialog('Criar pasta', 'Nome da pasta', '');
     if (!name || !name.trim()) {
       return;
     }
@@ -410,10 +429,10 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     this.api
       .createFolder({
         name: name.trim(),
-        parentId: this.selectedFolderId
+        parentId
       })
       .subscribe({
-        next: (folder) => {
+        next: (folder: FolderResponse) => {
           this.folders = [...this.folders, folder];
           this.selectedFolderId = folder.id;
           this.expandFolderPath(folder);
@@ -421,14 +440,15 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
           this.persistExpandedState();
           this.rebuildTreeRows();
         },
-        error: (error) => {
+        error: (error: unknown) => {
           window.alert(this.extractErrorMessage(error, 'Nao foi possivel criar a pasta.'));
         }
       });
   }
 
-  createTask(): void {
-    const title = this.newTaskTitle.trim();
+  async createTask(targetFolderId: string | null = this.selectedFolderId, providedTitle?: string): Promise<void> {
+    const titleCandidate = providedTitle ?? await this.openTextDialog('Criar task', 'Título da task', '');
+    const title = (titleCandidate ?? '').trim();
     if (!title) {
       return;
     }
@@ -438,19 +458,18 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
       .createTask({
         title,
         description: '',
-        folderId: this.selectedFolderId,
+        folderId: targetFolderId,
         createdAt: now,
         updatedAt: now
       })
       .subscribe({
-        next: (task) => {
-          this.newTaskTitle = '';
+        next: (task: TaskResponse) => {
           this.tasks = [
             {
               id: task.id,
               title: task.title,
               description: task.description,
-              folderId: this.selectedFolderId,
+              folderId: targetFolderId,
               updatedAt: now
             },
             ...this.tasks
@@ -458,16 +477,17 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
           this.rebuildTreeRows();
           this.selectTask(task.id);
         },
-        error: (error) => {
+        error: (error: unknown) => {
           window.alert(this.extractErrorMessage(error, 'Nao foi possivel criar a tarefa.'));
         }
       });
   }
 
   onRowClick(row: TreeRow): void {
+    this.closeTreeContextMenu();
+
     if (row.kind === 'folder') {
-      const folderId = row.id === DashboardComponent.INBOX_ID ? null : row.id;
-      this.selectedFolderId = folderId;
+      this.selectedFolderId = row.id;
       if (this.expandedFolderIds.has(row.id)) {
         this.expandedFolderIds.delete(row.id);
       } else {
@@ -479,6 +499,222 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     this.selectTask(row.id);
+  }
+
+  onTreeAreaClick(event: MouseEvent): void {
+    this.openTreeMenuFromEvent(event);
+  }
+
+  onTreeAreaContextMenu(event: MouseEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.openTreeMenuFromEvent(event);
+  }
+
+  private openTreeMenuFromEvent(event: MouseEvent): void {
+    const target = event.target as HTMLElement | null;
+    const rowButton = target?.closest('.obs-tree-row') as HTMLButtonElement | null;
+
+    if (!rowButton) {
+      this.treeContextMenu = {
+        open: true,
+        x: event.clientX,
+        y: event.clientY,
+        target: 'blank',
+        targetId: null,
+        targetFolderId: this.selectedFolderId
+      };
+      return;
+    }
+
+    const kind = rowButton.dataset['kind'];
+    const id = rowButton.dataset['id'] ?? null;
+    if (kind === 'folder' && id) {
+      this.selectedFolderId = id;
+      this.treeContextMenu = {
+        open: true,
+        x: event.clientX,
+        y: event.clientY,
+        target: 'folder',
+        targetId: id,
+        targetFolderId: id
+      };
+      this.rebuildTreeRows();
+      return;
+    }
+
+    if (kind === 'task' && id) {
+      const folderId = rowButton.dataset['folderId']?.trim() || null;
+      this.treeContextMenu = {
+        open: true,
+        x: event.clientX,
+        y: event.clientY,
+        target: 'task',
+        targetId: id,
+        targetFolderId: folderId
+      };
+      return;
+    }
+
+    this.treeContextMenu = {
+      open: true,
+      x: event.clientX,
+      y: event.clientY,
+      target: 'blank',
+      targetId: null,
+      targetFolderId: this.selectedFolderId
+    };
+  }
+
+  async onTreeMenuCreateFolder(): Promise<void> {
+    const parentId = this.treeContextMenu.target === 'folder' ? this.treeContextMenu.targetId : this.selectedFolderId;
+    this.closeTreeContextMenu();
+    await this.createFolder(parentId);
+  }
+
+  async onTreeMenuCreateTask(): Promise<void> {
+    const folderId = this.treeContextMenu.target === 'folder'
+      ? this.treeContextMenu.targetId
+      : this.treeContextMenu.target === 'task'
+        ? this.treeContextMenu.targetFolderId
+        : this.selectedFolderId;
+    this.closeTreeContextMenu();
+    await this.createTask(folderId ?? null);
+  }
+
+  async onTreeMenuRenameFolder(): Promise<void> {
+    const folderId = this.treeContextMenu.targetId;
+    if (!folderId) {
+      this.closeTreeContextMenu();
+      return;
+    }
+
+    const current = this.folders.find((item) => item.id === folderId);
+    const name = await this.openTextDialog('Renomear pasta', 'Novo nome da pasta', current?.name ?? '');
+    if (!name || !name.trim()) {
+      this.closeTreeContextMenu();
+      return;
+    }
+
+    this.api.updateFolder(folderId, { name: name.trim() }).subscribe({
+      next: (updated: FolderResponse) => {
+        this.folders = this.folders.map((folder) => (folder.id === folderId ? updated : folder));
+        this.rebuildTreeRows();
+        this.closeTreeContextMenu();
+      },
+      error: (error: unknown) => {
+        this.closeTreeContextMenu();
+        window.alert(this.extractErrorMessage(error, 'Nao foi possivel renomear a pasta.'));
+      }
+    });
+  }
+
+  async onTreeMenuRenameTask(): Promise<void> {
+    const taskId = this.treeContextMenu.targetId;
+    if (!taskId) {
+      this.closeTreeContextMenu();
+      return;
+    }
+
+    const current = this.tasks.find((item) => item.id === taskId);
+    const title = await this.openTextDialog('Renomear task', 'Novo título da task', current?.title ?? '');
+    if (!title || !title.trim()) {
+      this.closeTreeContextMenu();
+      return;
+    }
+
+    this.api.updateTask(taskId, { title: title.trim() }).subscribe({
+      next: (updated: TaskSummaryResponse) => {
+        this.tasks = this.tasks.map((task) => (task.id === taskId ? { ...task, title: updated.title } : task));
+        this.rebuildTreeRows();
+        this.closeTreeContextMenu();
+      },
+      error: (error: unknown) => {
+        this.closeTreeContextMenu();
+        window.alert(this.extractErrorMessage(error, 'Nao foi possivel renomear a task.'));
+      }
+    });
+  }
+
+  onTreeMenuMoveTaskToRoot(): void {
+    const taskId = this.treeContextMenu.targetId;
+    if (!taskId) {
+      this.closeTreeContextMenu();
+      return;
+    }
+
+    this.api.moveTask(taskId, { folderId: null }).subscribe({
+      next: (updated: TaskSummaryResponse) => {
+        this.tasks = this.tasks.map((task) => (task.id === taskId ? { ...task, folderId: updated.folderId ?? null } : task));
+        this.rebuildTreeRows();
+        this.closeTreeContextMenu();
+      },
+      error: (error: unknown) => {
+        this.closeTreeContextMenu();
+        window.alert(this.extractErrorMessage(error, 'Nao foi possivel mover a task.'));
+      }
+    });
+  }
+
+  async onTreeMenuDeleteFolder(): Promise<void> {
+    const folderId = this.treeContextMenu.targetId;
+    if (!folderId) {
+      this.closeTreeContextMenu();
+      return;
+    }
+
+    const confirmed = await this.openConfirmDialog('Deletar pasta', 'Deseja deletar todos os itens dentro dessa pasta?', 'Deletar');
+    if (!confirmed) {
+      this.closeTreeContextMenu();
+      return;
+    }
+
+    this.api.deleteFolder(folderId).subscribe({
+      next: () => {
+        if (this.selectedFolderId === folderId) {
+          this.selectedFolderId = null;
+        }
+        this.closeTreeContextMenu();
+        this.loadTree();
+      },
+      error: (error: unknown) => {
+        this.closeTreeContextMenu();
+        window.alert(this.extractErrorMessage(error, 'Nao foi possivel deletar a pasta.'));
+      }
+    });
+  }
+
+  async onTreeMenuDeleteTask(): Promise<void> {
+    const taskId = this.treeContextMenu.targetId;
+    if (!taskId) {
+      this.closeTreeContextMenu();
+      return;
+    }
+
+    const confirmed = await this.openConfirmDialog('Deletar task', 'Deseja deletar esta task?', 'Deletar');
+    if (!confirmed) {
+      this.closeTreeContextMenu();
+      return;
+    }
+
+    this.api.deleteTask(taskId).subscribe({
+      next: () => {
+        this.tasks = this.tasks.filter((task) => task.id !== taskId);
+        if (this.activeTaskId === taskId) {
+          this.activeTaskId = '';
+          this.blocks = [];
+          this.images = [];
+          this.boardStrokes = [];
+          this.renderBoardCanvas();
+        }
+        this.rebuildTreeRows();
+        this.closeTreeContextMenu();
+      },
+      error: (error: unknown) => {
+        this.closeTreeContextMenu();
+        window.alert(this.extractErrorMessage(error, 'Nao foi possivel deletar a task.'));
+      }
+    });
   }
 
   onWorkspaceContextMenu(event: MouseEvent): void {
@@ -497,13 +733,20 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
       blockX: Math.max(12, point.x - 30),
       blockY: Math.max(12, point.y - 20)
     };
+    this.closeTreeContextMenu();
+  }
+
+  closeMenus(): void {
+    this.closeContextMenu();
+    this.closeTreeContextMenu();
   }
 
   closeContextMenu(): void {
-    if (!this.contextMenu.open) {
-      return;
-    }
     this.contextMenu = { ...this.contextMenu, open: false };
+  }
+
+  closeTreeContextMenu(): void {
+    this.treeContextMenu = { open: false, x: 0, y: 0, target: null, targetId: null, targetFolderId: null };
   }
 
   createBlockAtCursor(type: 'TEXT' | 'DRAW'): void {
@@ -522,16 +765,16 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
         updatedAt: now
       })
       .subscribe({
-        next: (created) => {
+        next: (created: BlockResponse) => {
           this.blocks = [
             ...this.blocks,
             this.toWorkspaceBlock(created, this.contextMenu.blockX, this.contextMenu.blockY)
           ].sort((a, b) => a.orderIndex - b.orderIndex);
-          this.closeContextMenu();
+          this.closeMenus();
           this.queueWorkspaceSave();
         },
-        error: (error) => {
-          this.closeContextMenu();
+        error: (error: unknown) => {
+          this.closeMenus();
           window.alert(this.extractErrorMessage(error, 'Nao foi possivel criar o bloco.'));
         }
       });
@@ -775,14 +1018,14 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   private selectTask(taskId: string): void {
     this.activeTaskId = taskId;
     this.sidebarOpen = false;
-    this.closeContextMenu();
+    this.closeMenus();
     this.documentVersion = null;
 
     this.api.getTask(taskId).subscribe({
-      next: (task) => {
+      next: (task: TaskDetailResponse) => {
         this.applyTaskDetail(task);
         this.api.getTaskDocument(taskId).subscribe({
-          next: (doc) => {
+          next: (doc: TaskDocumentResponse) => {
             this.applyWorkspaceDocument(doc);
           },
           error: () => {
@@ -792,7 +1035,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
           }
         });
       },
-      error: (error) => {
+      error: (error: unknown) => {
         window.alert(this.extractErrorMessage(error, 'Nao foi possivel abrir a task.'));
       }
     });
@@ -889,12 +1132,12 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
 
   private loadTree(): void {
     this.api.getTree().subscribe({
-      next: (tree) => {
+      next: (tree: TaskTreeResponse) => {
         this.folders = tree.folders ?? [];
         this.tasks = tree.tasks ?? [];
         this.rebuildTreeRows();
       },
-      error: (error) => {
+      error: (error: unknown) => {
         window.alert(this.extractErrorMessage(error, 'Nao foi possivel carregar as pastas e tarefas.'));
       }
     });
@@ -1022,7 +1265,6 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private expandFolderPath(folder: FolderResponse): void {
-    this.expandedFolderIds.add(DashboardComponent.INBOX_ID);
     let parentId = folder.parentId ?? null;
     while (parentId) {
       this.expandedFolderIds.add(parentId);
@@ -1032,30 +1274,18 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
 
   private rebuildTreeRows(): void {
     const rows: TreeRow[] = [];
-    rows.push({
-      kind: 'folder',
-      id: DashboardComponent.INBOX_ID,
-      name: 'Inbox',
-      prefix: '',
-      expanded: this.expandedFolderIds.has(DashboardComponent.INBOX_ID),
-      selected: this.selectedFolderId === null,
-      matched: this.matchesSearch('Inbox')
-    });
-
-    if (this.expandedFolderIds.has(DashboardComponent.INBOX_ID)) {
-      const inboxTasks = this.tasks.filter((task) => !task.folderId);
-      inboxTasks.forEach((task, index) => {
-        rows.push({
-          kind: 'task',
-          id: task.id,
-          title: task.title,
-          folderId: null,
-          prefix: index === inboxTasks.length - 1 ? '└─ ' : '├─ ',
-          active: task.id === this.activeTaskId,
-          matched: this.matchesSearch(task.title) || this.matchesSearch(task.description)
-        });
+    const rootTasks = this.tasks.filter((task) => !task.folderId);
+    rootTasks.forEach((task) => {
+      rows.push({
+        kind: 'task',
+        id: task.id,
+        title: task.title,
+        folderId: null,
+        prefix: '',
+        active: task.id === this.activeTaskId,
+        matched: this.matchesSearch(task.title) || this.matchesSearch(task.description)
       });
-    }
+    });
 
     this.buildFolderRows(rows, null, []);
     this.treeRows = rows;
@@ -1205,12 +1435,54 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
       const parsed = JSON.parse(raw) as string[];
       if (Array.isArray(parsed)) {
         this.expandedFolderIds = new Set(parsed);
-        if (!this.expandedFolderIds.has(DashboardComponent.INBOX_ID)) {
-          this.expandedFolderIds.add(DashboardComponent.INBOX_ID);
-        }
       }
     } catch {
-      this.expandedFolderIds = new Set([DashboardComponent.INBOX_ID]);
+      this.expandedFolderIds = new Set();
     }
+  }
+
+  private openTextDialog(title: string, label: string, initialValue: string): Promise<string | null> {
+    this.dialog = {
+      open: true,
+      mode: 'text',
+      title,
+      label,
+      placeholder: '',
+      value: initialValue,
+      confirmText: 'OK'
+    };
+    return new Promise((resolve) => {
+      this.dialogResolver = (result) => resolve(typeof result === 'string' ? result : null);
+    });
+  }
+
+  private openConfirmDialog(title: string, label: string, confirmText: string): Promise<boolean> {
+    this.dialog = {
+      open: true,
+      mode: 'confirm',
+      title,
+      label,
+      placeholder: '',
+      value: '',
+      confirmText
+    };
+    return new Promise((resolve) => {
+      this.dialogResolver = (result) => resolve(result === true);
+    });
+  }
+
+  onDialogCancel(): void {
+    const resolver = this.dialogResolver;
+    this.dialogResolver = null;
+    this.dialog.open = false;
+    resolver?.(null);
+  }
+
+  onDialogConfirm(): void {
+    const resolver = this.dialogResolver;
+    this.dialogResolver = null;
+    const payload = this.dialog.mode === 'confirm' ? true : this.dialog.value;
+    this.dialog.open = false;
+    resolver?.(payload);
   }
 }

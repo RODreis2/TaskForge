@@ -1,7 +1,7 @@
 import { Routes } from '@angular/router';
 import { LoginComponent } from './features/auth/login.component';
 import { RegisterComponent } from './features/auth/register.component';
-import { DashboardComponent } from './features/tasks/dashboard.component';
+import { DashboardComponent } from './features/tasks/pages/dashboard/dashboard.component';
 import { authGuard } from './core/auth.guard';
 
 export const appRoutes: Routes = [

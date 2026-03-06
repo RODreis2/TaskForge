@@ -113,6 +113,14 @@ export interface MoveTaskRequest {
   folderId?: string | null;
 }
 
+export interface UpdateFolderRequest {
+  name: string;
+}
+
+export interface UpdateTaskRequest {
+  title: string;
+}
+
 export interface UpsertTaskDocumentRequest {
   content: TaskDocumentContent;
   version?: number | null;
@@ -162,8 +170,24 @@ export class ApiService {
     return this.http.post<FolderResponse>('/api/tasks/event/folders', payload);
   }
 
+  updateFolder(folderId: string, payload: UpdateFolderRequest): Observable<FolderResponse> {
+    return this.http.patch<FolderResponse>(`/api/tasks/event/folders/${folderId}`, payload);
+  }
+
+  deleteFolder(folderId: string): Observable<void> {
+    return this.http.delete<void>(`/api/tasks/event/folders/${folderId}`);
+  }
+
   moveTask(taskId: string, payload: MoveTaskRequest): Observable<TaskSummaryResponse> {
     return this.http.patch<TaskSummaryResponse>(`/api/tasks/event/tasks/${taskId}/move`, payload);
+  }
+
+  updateTask(taskId: string, payload: UpdateTaskRequest): Observable<TaskSummaryResponse> {
+    return this.http.patch<TaskSummaryResponse>(`/api/tasks/event/tasks/${taskId}`, payload);
+  }
+
+  deleteTask(taskId: string): Observable<void> {
+    return this.http.delete<void>(`/api/tasks/event/tasks/${taskId}`);
   }
 
   getTaskDocument(taskId: string): Observable<TaskDocumentResponse> {

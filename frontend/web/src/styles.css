@@ -221,7 +221,9 @@ body {
   border-right: 1px solid #262a33;
   background: #171a21;
   padding: 0.8rem;
-  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   overflow-x: hidden;
 }
 
@@ -244,6 +246,34 @@ body {
   white-space: nowrap;
 }
 
+.obs-icon-btn {
+  width: 1.9rem;
+  height: 1.9rem;
+  border-radius: 0.45rem;
+  border: 1px solid #4d5970;
+  background: #1e2738;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #dce5f7;
+  transition: background 120ms ease, border-color 120ms ease;
+}
+
+.obs-icon-btn:hover {
+  background: #2a3650;
+  border-color: #6d84b4;
+}
+
+.obs-icon-btn svg {
+  width: 1.1rem;
+  height: 1.1rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
 .obs-tree-form {
   display: flex;
   gap: 0.4rem;
@@ -253,6 +283,10 @@ body {
 .obs-tree-scroll {
   display: grid;
   gap: 0.15rem;
+  flex: 1 1 auto;
+  align-content: start;
+  overflow: auto;
+  min-height: 0;
 }
 
 .obs-tree-create {
@@ -837,6 +871,57 @@ body {
   min-width: 12.5rem;
   overflow: hidden;
   box-shadow: 0 14px 28px rgba(0, 0, 0, 0.35);
+}
+
+.obs-context-menu-fixed {
+  position: fixed;
+  z-index: 60;
+}
+
+.obs-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(7, 10, 16, 0.72);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 80;
+}
+
+.obs-dialog {
+  width: min(92vw, 31rem);
+  border: 1px solid #3b4b68;
+  border-radius: 0.85rem;
+  background: #20283a;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.42);
+  padding: 1rem;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.obs-dialog-title {
+  font-size: 1rem;
+  color: #e8edf8;
+  font-weight: 700;
+}
+
+.obs-dialog-label {
+  display: grid;
+  gap: 0.45rem;
+  color: #bcc6dc;
+  font-size: 0.86rem;
+}
+
+.obs-dialog-message {
+  color: #d7def0;
+  font-size: 0.92rem;
+  line-height: 1.35;
+}
+
+.obs-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.55rem;
 }
 
 .obs-context-menu button {
