@@ -10,6 +10,8 @@ import com.Exemple.Event.dto.request.CreateFolderRequest;
 import com.Exemple.Event.dto.request.MoveTaskRequest;
 import com.Exemple.Event.dto.request.TaskRequest;
 import com.Exemple.Event.dto.request.TaskDocumentUpsertRequest;
+import com.Exemple.Event.dto.request.UpdateFolderRequest;
+import com.Exemple.Event.dto.request.UpdateTaskRequest;
 import com.Exemple.Event.dto.response.BlockResponse;
 import com.Exemple.Event.dto.response.FolderResponse;
 import com.Exemple.Event.dto.response.TaskDocumentResponse;
@@ -26,13 +28,16 @@ import com.Exemple.Event.repository.TaskRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.ArrayDeque;
 import java.util.UUID;
+import java.util.Deque;
 import java.util.stream.Collectors;
 
 import static org.springframework.http.HttpStatus.CONFLICT;
@@ -128,6 +133,72 @@ public class TaskService {
         task.setFolder(resolveFolder(ownerId, request.getFolderId()));
         task.setUpdatedAt(LocalDateTime.now());
         return toSummaryResponse(taskRepository.save(task));
+    }
+
+    @Transactional
+    public FolderResponse updateFolder(UUID ownerId, UUID folderId, UpdateFolderRequest request) {
+        FolderModel folder = folderRepository.findByIdAndOwnerId(folderId, ownerId)
+                .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Pasta não encontrada"));
+
+        String normalizedName = request.getName() == null ? "" : request.getName().trim();
+        if (normalizedName.isBlank()) {
+            throw new ResponseStatusException(BAD_REQUEST, "Nome da pasta é obrigatório");
+        }
+
+        folder.setName(normalizedName);
+        folder.setUpdatedAt(LocalDateTime.now());
+        try {
+            FolderModel saved = folderRepository.save(folder);
+            return new FolderResponse(saved.getId(), saved.getName(), saved.getParent() != null ? saved.getParent().getId() : null);
+        } catch (DataIntegrityViolationException ex) {
+            throw new ResponseStatusException(CONFLICT, "Já existe uma pasta com esse nome neste nível");
+        }
+    }
+
+    @Transactional
+    public void deleteFolderCascade(UUID ownerId, UUID folderId) {
+        boolean exists = folderRepository.findByIdAndOwnerId(folderId, ownerId).isPresent();
+        if (!exists) {
+            throw new ResponseStatusException(NOT_FOUND, "Pasta não encontrada");
+        }
+
+        List<UUID> subtreeIds = new java.util.ArrayList<>();
+        Deque<UUID> queue = new ArrayDeque<>();
+        queue.add(folderId);
+
+        while (!queue.isEmpty()) {
+            UUID current = queue.removeFirst();
+            subtreeIds.add(current);
+            List<UUID> children = folderRepository.findIdsByOwnerIdAndParentId(ownerId, current);
+            if (!children.isEmpty()) {
+                queue.addAll(children);
+            }
+        }
+
+        taskRepository.deleteAllByOwnerIdAndFolderIdIn(ownerId, subtreeIds);
+        folderRepository.deleteAllByIdInBatch(subtreeIds);
+    }
+
+    @Transactional
+    public TaskSummaryResponse updateTask(UUID ownerId, UUID taskId, UpdateTaskRequest request) {
+        TaskModel task = taskRepository.findByIdAndOwnerId(taskId, ownerId)
+                .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Task não encontrada"));
+
+        String normalizedTitle = request.getTitle() == null ? "" : request.getTitle().trim();
+        if (normalizedTitle.isBlank()) {
+            throw new ResponseStatusException(BAD_REQUEST, "Título da task é obrigatório");
+        }
+
+        task.setTitle(normalizedTitle);
+        task.setUpdatedAt(LocalDateTime.now());
+        return toSummaryResponse(taskRepository.save(task));
+    }
+
+    @Transactional
+    public void deleteTask(UUID ownerId, UUID taskId) {
+        TaskModel task = taskRepository.findByIdAndOwnerId(taskId, ownerId)
+                .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Task não encontrada"));
+        taskRepository.delete(task);
     }
 
     public TaskTreeResponse getTree(UUID ownerId) {

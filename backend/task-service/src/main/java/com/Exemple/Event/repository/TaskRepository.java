@@ -11,6 +11,8 @@ import java.util.UUID;
 public interface TaskRepository extends JpaRepository<TaskModel, UUID> {
     List<TaskModel> findAllByOwnerIdOrderByUpdatedAtDesc(UUID ownerId);
     List<TaskModel> findAllByOwnerIdAndFolderIdOrderByUpdatedAtDesc(UUID ownerId, UUID folderId);
+    List<TaskModel> findAllByOwnerIdAndFolderIdIn(UUID ownerId, List<UUID> folderIds);
+    void deleteAllByOwnerIdAndFolderIdIn(UUID ownerId, List<UUID> folderIds);
     List<TaskModel> findAllByOwnerIdAndFolderIsNullOrderByUpdatedAtDesc(UUID ownerId);
     @EntityGraph(attributePaths = "blocks")
     Optional<TaskModel> findWithBlocksByIdAndOwnerId(UUID id, UUID ownerId);

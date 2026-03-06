@@ -7,6 +7,8 @@ import com.Exemple.Event.dto.request.CreateFolderRequest;
 import com.Exemple.Event.dto.request.MoveTaskRequest;
 import com.Exemple.Event.dto.request.TaskRequest;
 import com.Exemple.Event.dto.request.TaskDocumentUpsertRequest;
+import com.Exemple.Event.dto.request.UpdateFolderRequest;
+import com.Exemple.Event.dto.request.UpdateTaskRequest;
 import com.Exemple.Event.dto.response.BlockResponse;
 import com.Exemple.Event.dto.response.FolderResponse;
 import com.Exemple.Event.dto.response.TaskDocumentResponse;
@@ -23,6 +25,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -88,6 +91,36 @@ public class TaskController {
     @PatchMapping("/tasks/{taskId}/move")
     public ResponseEntity<TaskSummaryResponse> moveTask(@PathVariable UUID taskId, @RequestBody MoveTaskRequest request, @AuthenticationPrincipal Jwt jwt) {
         return ResponseEntity.ok(eventService.moveTask(ownerId(jwt), taskId, request));
+    }
+
+    @PatchMapping("/folders/{folderId}")
+    public ResponseEntity<FolderResponse> updateFolder(
+            @PathVariable UUID folderId,
+            @Valid @RequestBody UpdateFolderRequest request,
+            @AuthenticationPrincipal Jwt jwt
+    ) {
+        return ResponseEntity.ok(eventService.updateFolder(ownerId(jwt), folderId, request));
+    }
+
+    @DeleteMapping("/folders/{folderId}")
+    public ResponseEntity<Void> deleteFolder(@PathVariable UUID folderId, @AuthenticationPrincipal Jwt jwt) {
+        eventService.deleteFolderCascade(ownerId(jwt), folderId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PatchMapping("/tasks/{taskId}")
+    public ResponseEntity<TaskSummaryResponse> updateTask(
+            @PathVariable UUID taskId,
+            @Valid @RequestBody UpdateTaskRequest request,
+            @AuthenticationPrincipal Jwt jwt
+    ) {
+        return ResponseEntity.ok(eventService.updateTask(ownerId(jwt), taskId, request));
+    }
+
+    @DeleteMapping("/tasks/{taskId}")
+    public ResponseEntity<Void> deleteTask(@PathVariable UUID taskId, @AuthenticationPrincipal Jwt jwt) {
+        eventService.deleteTask(ownerId(jwt), taskId);
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/tasks/{taskId}/document")
