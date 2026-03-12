@@ -45,6 +45,15 @@ export type WorkspaceImage = {
   height: number;
 };
 
+export type WorkspaceDocumentBlock = {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  textContent?: string;
+  drawingData?: string;
+};
+
 export type SaveState = 'idle' | 'saving' | 'saved' | 'error';
 
 export type TreeContextMenuState =

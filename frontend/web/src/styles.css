@@ -15,7 +15,7 @@
 }
 
 body {
-  font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+  font-family: "Segoe UI", Arial, sans-serif;
   min-height: 100vh;
   background: radial-gradient(circle at top left, #efebe4, #f6f6f3 45%);
 }
@@ -66,7 +66,7 @@ body {
 }
 
 .forge-title {
-  font-family: "Teko", "IBM Plex Sans", sans-serif;
+  font-family: "Arial Narrow", "Segoe UI", sans-serif;
   font-size: clamp(2rem, 3vw, 2.75rem);
   letter-spacing: 0.04em;
   line-height: 1;
@@ -93,7 +93,7 @@ body {
 }
 
 .forge-sidebar-head h2 {
-  font-family: "Teko", "IBM Plex Sans", sans-serif;
+  font-family: "Arial Narrow", "Segoe UI", sans-serif;
   font-size: 1.75rem;
   letter-spacing: 0.04em;
 }

@@ -1,6 +1,21 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
+import { AuthService } from '../../core/auth.service';
+import { UserResponse } from '../../core/api.service';
+
+type LandingPreviewKey = 'onboarding' | 'signup' | 'journey' | 'priorities';
+
+type LandingPreviewScene = {
+  sprint: string;
+  taskTitle: string;
+  saveLabel: string;
+  textTitle: string;
+  textBody: string;
+  drawTitle: string;
+  noteTitle: string;
+  noteBody: string;
+};
 
 @Component({
   selector: 'app-landing',
@@ -17,9 +32,11 @@ import { RouterLink } from '@angular/router';
           <span class="tf-brand">TaskForge</span>
         </div>
         <nav class="tf-top-actions" aria-label="Acessos principais">
-          <a routerLink="/login" class="btn-ghost">Login</a>
-          <a routerLink="/register" class="btn-ghost">Criar conta</a>
-          <a routerLink="/dashboard" class="btn-primary">Abrir dashboard</a>
+          <ng-container *ngIf="currentUser; else guestTopActions">
+            <a routerLink="/profile" class="btn-ghost">Perfil</a>
+            <a routerLink="/dashboard" class="btn-ghost">Dashboard</a>
+            <button type="button" class="btn-primary" (click)="logout()">Sair</button>
+          </ng-container>
         </nav>
       </header>
 
@@ -32,41 +49,110 @@ import { RouterLink } from '@angular/router';
               O TaskForge conecta pastas, tarefas e workspace criativo em um único fluxo. Menos fricção para organizar,
               priorizar e entregar com previsibilidade.
             </p>
+            <p *ngIf="currentUser" class="tf-user-pill">
+              Sessão ativa como <strong>{{ currentUser.name }}</strong>
+            </p>
             <div class="tf-hero-actions">
-              <a routerLink="/dashboard" class="btn-primary">Ir para dashboard</a>
-              <a routerLink="/login" class="btn-ghost">Entrar</a>
-              <a routerLink="/register" class="btn-ghost">Criar conta</a>
+              <a routerLink="/dashboard" class="btn-primary">{{ currentUser ? 'Abrir dashboard' : 'Ir para dashboard' }}</a>
+              <ng-container *ngIf="currentUser; else guestHeroActions">
+                <a routerLink="/profile" class="btn-ghost">Perfil</a>
+                <button type="button" class="btn-ghost" (click)="logout()">Sair</button>
+              </ng-container>
             </div>
           </div>
 
           <aside class="tf-hero-visual" aria-label="Prévia visual do TaskForge">
             <div class="tf-surface">
-              <div class="tf-tree-chip tf-tree-chip-root">Projetos</div>
-              <div class="tf-tree-chip tf-tree-chip-a">Produto</div>
-              <div class="tf-tree-chip tf-tree-chip-b">Sprint 12</div>
-              <div class="tf-note tf-note-a">
-                <strong>Task</strong>
-                <p>Refinar onboarding visual</p>
+              <div class="tf-app-shell">
+                <aside class="tf-app-sidebar">
+                  <div class="tf-app-sidebar-head">
+                    <span class="tf-app-brand">TaskForge</span>
+                    <span class="tf-app-badge">{{ currentPreview.sprint }}</span>
+                  </div>
+
+                  <div class="tf-app-tree">
+                    <div class="tf-app-tree-group">
+                      <span class="tf-app-tree-label">Produto</span>
+                      <button
+                        class="tf-app-tree-item"
+                        [class.tf-app-tree-item-active]="selectedPreview === 'onboarding'"
+                        type="button"
+                        (click)="selectPreview('onboarding')"
+                      >
+                        Onboarding visual
+                      </button>
+                      <button
+                        class="tf-app-tree-item"
+                        [class.tf-app-tree-item-active]="selectedPreview === 'signup'"
+                        type="button"
+                        (click)="selectPreview('signup')"
+                      >
+                        Fluxo de cadastro
+                      </button>
+                    </div>
+
+                    <div class="tf-app-tree-group">
+                      <span class="tf-app-tree-label">Workspace</span>
+                      <button
+                        class="tf-app-tree-item"
+                        [class.tf-app-tree-item-active]="selectedPreview === 'journey'"
+                        type="button"
+                        (click)="selectPreview('journey')"
+                      >
+                        Mapa de jornada
+                      </button>
+                      <button
+                        class="tf-app-tree-item"
+                        [class.tf-app-tree-item-active]="selectedPreview === 'priorities'"
+                        type="button"
+                        (click)="selectPreview('priorities')"
+                      >
+                        Prioridades
+                      </button>
+                    </div>
+                  </div>
+                </aside>
+
+                <section class="tf-app-workspace">
+                  <header class="tf-app-workspace-head">
+                    <div>
+                      <p class="tf-app-kicker">Task ativa</p>
+                      <h3>{{ currentPreview.taskTitle }}</h3>
+                    </div>
+                    <span class="tf-app-save">{{ currentPreview.saveLabel }}</span>
+                  </header>
+
+                  <div class="tf-app-canvas">
+                    <article class="tf-app-block tf-app-block-text">
+                      <header>
+                        <span>{{ currentPreview.textTitle }}</span>
+                        <span>#01</span>
+                      </header>
+                      <p>{{ currentPreview.textBody }}</p>
+                    </article>
+
+                    <article class="tf-app-block tf-app-block-draw">
+                      <header>
+                        <span>{{ currentPreview.drawTitle }}</span>
+                        <span>#02</span>
+                      </header>
+                      <div class="tf-app-sketch" aria-hidden="true">
+                        <span class="tf-app-sketch-node tf-app-sketch-node-a"></span>
+                        <span class="tf-app-sketch-node tf-app-sketch-node-b"></span>
+                        <span class="tf-app-sketch-node tf-app-sketch-node-c"></span>
+                        <svg viewBox="0 0 100 48" preserveAspectRatio="none">
+                          <path d="M12 26 C28 8, 42 8, 56 20 S80 34, 90 14" />
+                        </svg>
+                      </div>
+                    </article>
+
+                    <article class="tf-app-note">
+                      <strong>{{ currentPreview.noteTitle }}</strong>
+                      <p>{{ currentPreview.noteBody }}</p>
+                    </article>
+                  </div>
+                </section>
               </div>
-              <div class="tf-note tf-note-b">
-                <strong>Bloco</strong>
-                <p>Desenho de fluxo e priorização</p>
-              </div>
-              <div class="tf-note tf-note-c">
-                <strong>Status</strong>
-                <p>Salvo automaticamente</p>
-              </div>
-              <svg class="tf-wire-map" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-                <path d="M17 24 C30 24, 39 18, 54 17" />
-                <path d="M24 31 C34 37, 45 42, 56 42" />
-                <path d="M92 58 C83 72, 67 64, 50 76" />
-                <circle cx="17" cy="24" r="1.15" />
-                <circle cx="54" cy="17" r="1.15" />
-                <circle cx="24" cy="31" r="1.15" />
-                <circle cx="56" cy="42" r="1.15" />
-                <circle cx="92" cy="58" r="1.15" />
-                <circle cx="50" cy="76" r="1.15" />
-              </svg>
             </div>
           </aside>
         </div>
@@ -136,9 +222,11 @@ import { RouterLink } from '@angular/router';
         <h2>Centralize a operação e execute com mais precisão.</h2>
         <p>Comece no TaskForge e transforme planejamento em progresso visível.</p>
         <div class="tf-hero-actions">
-          <a routerLink="/register" class="btn-primary">Começar agora</a>
-          <a routerLink="/login" class="btn-ghost">Já tenho conta</a>
-          <a routerLink="/dashboard" class="btn-ghost">Acessar dashboard</a>
+          <a routerLink="/dashboard" class="btn-primary">Acessar dashboard</a>
+          <ng-container *ngIf="currentUser; else guestCtaActions">
+            <a routerLink="/profile" class="btn-ghost">Perfil</a>
+            <button type="button" class="btn-ghost" (click)="logout()">Sair</button>
+          </ng-container>
         </div>
       </section>
 
@@ -146,6 +234,22 @@ import { RouterLink } from '@angular/router';
         <span>TaskForge</span>
         <small>Planejamento visual para execução profissional.</small>
       </footer>
+
+      <ng-template #guestTopActions>
+        <a routerLink="/login" class="btn-ghost">Login</a>
+        <a routerLink="/register" class="btn-ghost">Criar conta</a>
+        <a routerLink="/dashboard" class="btn-primary">Abrir dashboard</a>
+      </ng-template>
+
+      <ng-template #guestHeroActions>
+        <a routerLink="/login" class="btn-ghost">Entrar</a>
+        <a routerLink="/register" class="btn-ghost">Criar conta</a>
+      </ng-template>
+
+      <ng-template #guestCtaActions>
+        <a routerLink="/register" class="btn-ghost">Começar agora</a>
+        <a routerLink="/login" class="btn-ghost">Já tenho conta</a>
+      </ng-template>
     </main>
   `,
   styles: [
@@ -236,6 +340,10 @@ import { RouterLink } from '@angular/router';
         align-items: center;
       }
 
+      .tf-top-actions button {
+        border: 0;
+      }
+
       .tf-hero {
         margin-bottom: 2.6rem;
       }
@@ -279,11 +387,28 @@ import { RouterLink } from '@angular/router';
         line-height: 1.55;
       }
 
+      .tf-user-pill {
+        margin-top: 1rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        border: 1px solid rgba(118, 150, 199, 0.55);
+        background: rgba(16, 24, 38, 0.72);
+        border-radius: 999px;
+        padding: 0.4rem 0.75rem;
+        color: #dce8ff;
+        font-size: 0.88rem;
+      }
+
       .tf-hero-actions {
         margin-top: 1.2rem;
         display: flex;
         flex-wrap: wrap;
         gap: 0.55rem;
+      }
+
+      .tf-hero-actions button {
+        border: 0;
       }
 
       .tf-hero-visual {
@@ -304,89 +429,249 @@ import { RouterLink } from '@angular/router';
         padding: 0.85rem;
       }
 
-      .tf-tree-chip {
-        position: absolute;
-        border: 1px solid #436ca7;
-        background: rgba(20, 37, 62, 0.92);
-        color: #dce8ff;
-        border-radius: 0.52rem;
-        font-size: 0.8rem;
-        padding: 0.3rem 0.5rem;
+      .tf-app-shell {
+        position: relative;
+        z-index: 1;
+        min-height: 19.2rem;
+        display: grid;
+        grid-template-columns: 10.5rem minmax(0, 1fr);
+        gap: 0.9rem;
+      }
+
+      .tf-app-sidebar {
+        border: 1px solid rgba(73, 101, 145, 0.62);
+        border-radius: 0.95rem;
+        background: rgba(13, 22, 35, 0.86);
+        padding: 0.8rem 0.7rem;
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+      }
+
+      .tf-app-sidebar-head {
+        display: flex;
+        flex-direction: column;
+        gap: 0.45rem;
+      }
+
+      .tf-app-brand {
+        font-size: 0.82rem;
+        font-weight: 700;
+        color: #f2f6ff;
+      }
+
+      .tf-app-badge {
+        width: fit-content;
+        border: 1px solid rgba(84, 126, 188, 0.72);
+        border-radius: 999px;
+        padding: 0.18rem 0.5rem;
+        font-size: 0.68rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: #a9c4f2;
+      }
+
+      .tf-app-tree {
+        display: flex;
+        flex-direction: column;
+        gap: 0.95rem;
+      }
+
+      .tf-app-tree-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.4rem;
+      }
+
+      .tf-app-tree-label {
+        font-size: 0.66rem;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: #89a0c2;
+      }
+
+      .tf-app-tree-item {
+        border: 1px solid rgba(60, 86, 123, 0.72);
+        border-radius: 0.68rem;
+        background: rgba(22, 34, 52, 0.92);
+        color: #dce7fb;
+        font-size: 0.76rem;
+        padding: 0.5rem 0.55rem;
+        text-align: left;
+      }
+
+      .tf-app-tree-item-active {
+        border-color: rgba(108, 149, 213, 0.95);
+        box-shadow: inset 0 0 0 1px rgba(108, 149, 213, 0.2);
+      }
+
+      .tf-app-workspace {
+        border: 1px solid rgba(74, 99, 139, 0.68);
+        border-radius: 0.95rem;
+        background: rgba(13, 22, 35, 0.78);
+        padding: 0.8rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.8rem;
+      }
+
+      .tf-app-workspace-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 0.75rem;
+      }
+
+      .tf-app-kicker {
+        font-size: 0.64rem;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: #89a0c2;
+      }
+
+      .tf-app-workspace-head h3 {
+        margin-top: 0.22rem;
+        font-size: 1rem;
+        line-height: 1.2;
+        color: #f4f7fe;
+      }
+
+      .tf-app-save {
+        border: 1px solid rgba(78, 119, 175, 0.72);
+        border-radius: 999px;
+        background: rgba(19, 35, 57, 0.9);
+        color: #cde3ff;
+        font-size: 0.68rem;
+        font-weight: 700;
+        padding: 0.28rem 0.55rem;
         white-space: nowrap;
       }
 
-      .tf-tree-chip-root {
-        top: 1rem;
-        left: 0.8rem;
+      .tf-app-canvas {
+        position: relative;
+        flex: 1;
+        border: 1px solid rgba(51, 73, 104, 0.72);
+        border-radius: 0.9rem;
+        background:
+          linear-gradient(rgba(133, 169, 228, 0.06) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(133, 169, 228, 0.06) 1px, transparent 1px),
+          radial-gradient(circle at 72% 18%, rgba(226, 147, 72, 0.12), transparent 34%),
+          rgba(10, 18, 31, 0.92);
+        background-size: 24px 24px, 24px 24px, auto, auto;
+        overflow: hidden;
+        min-height: 12rem;
       }
 
-      .tf-tree-chip-a {
-        top: 3.3rem;
-        left: 2rem;
-      }
-
-      .tf-tree-chip-b {
-        top: 5.6rem;
-        left: 3.25rem;
-      }
-
-      .tf-note {
+      .tf-app-block,
+      .tf-app-note {
         position: absolute;
-        border: 1px solid #4a638a;
-        border-radius: 0.72rem;
-        background: rgba(16, 26, 40, 0.9);
-        padding: 0.55rem 0.6rem;
-        width: min(15.2rem, 66%);
+        border: 1px solid rgba(77, 107, 152, 0.76);
+        border-radius: 0.82rem;
+        background: rgba(13, 25, 40, 0.94);
+        box-shadow: 0 10px 24px rgba(4, 10, 20, 0.24);
       }
 
-      .tf-note strong {
-        font-size: 0.72rem;
+      .tf-app-block {
+        width: 10.2rem;
+        padding: 0.55rem 0.6rem;
+      }
+
+      .tf-app-block header {
+        display: flex;
+        justify-content: space-between;
+        gap: 0.5rem;
+        font-size: 0.64rem;
+        font-weight: 700;
         letter-spacing: 0.1em;
         text-transform: uppercase;
         color: #f4ceab;
       }
 
-      .tf-note p {
-        margin-top: 0.2rem;
-        font-size: 0.84rem;
-        line-height: 1.4;
-        color: #d6e0f1;
+      .tf-app-block p {
+        margin-top: 0.45rem;
+        font-size: 0.76rem;
+        line-height: 1.45;
+        color: #d8e3f7;
       }
 
-      .tf-note-a {
-        top: 1.35rem;
-        right: 0.85rem;
+      .tf-app-block-text {
+        left: 1rem;
+        top: 1.05rem;
       }
 
-      .tf-note-b {
-        top: 8.6rem;
-        right: 1.6rem;
+      .tf-app-block-draw {
+        right: 1rem;
+        top: 2.9rem;
+        width: 9.8rem;
       }
 
-      .tf-note-c {
-        left: 1.35rem;
-        bottom: 1rem;
+      .tf-app-sketch {
+        position: relative;
+        height: 4.2rem;
+        margin-top: 0.55rem;
+        border-radius: 0.7rem;
+        background: rgba(18, 31, 48, 0.88);
       }
 
-      .tf-wire-map {
+      .tf-app-sketch svg {
         position: absolute;
-        inset: 0;
-        pointer-events: none;
+        inset: 0.55rem 0.6rem;
+        width: calc(100% - 1.2rem);
+        height: calc(100% - 1.1rem);
       }
 
-      .tf-wire-map path {
+      .tf-app-sketch path {
         fill: none;
-        stroke: rgba(154, 198, 255, 0.72);
-        stroke-width: 0.62;
+        stroke: rgba(152, 196, 255, 0.92);
+        stroke-width: 3;
         stroke-linecap: round;
         stroke-linejoin: round;
-        stroke-dasharray: 1.8 1.8;
+        stroke-dasharray: 7 5;
       }
 
-      .tf-wire-map circle {
-        fill: #97c0ff;
-        opacity: 0.92;
-        filter: drop-shadow(0 0 3px rgba(133, 185, 255, 0.64));
+      .tf-app-sketch-node {
+        position: absolute;
+        width: 0.55rem;
+        height: 0.55rem;
+        border-radius: 999px;
+        background: #a8cbff;
+        box-shadow: 0 0 0 0.2rem rgba(145, 190, 255, 0.14);
+      }
+
+      .tf-app-sketch-node-a {
+        left: 1rem;
+        top: 2.2rem;
+      }
+
+      .tf-app-sketch-node-b {
+        left: 4.6rem;
+        top: 0.95rem;
+      }
+
+      .tf-app-sketch-node-c {
+        right: 1rem;
+        top: 1.45rem;
+      }
+
+      .tf-app-note {
+        left: 3.1rem;
+        bottom: 1rem;
+        width: 10.8rem;
+        padding: 0.6rem 0.7rem;
+      }
+
+      .tf-app-note strong {
+        font-size: 0.66rem;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: #f4ceab;
+      }
+
+      .tf-app-note p {
+        margin-top: 0.38rem;
+        font-size: 0.74rem;
+        line-height: 1.4;
+        color: #d5e0f2;
       }
 
       .tf-metrics {
@@ -544,6 +829,15 @@ import { RouterLink } from '@angular/router';
         .tf-surface {
           min-height: 18rem;
         }
+
+        .tf-app-shell {
+          grid-template-columns: 9rem minmax(0, 1fr);
+        }
+
+        .tf-app-note {
+          left: 1rem;
+          width: calc(100% - 2rem);
+        }
       }
 
       @media (max-width: 620px) {
@@ -563,9 +857,37 @@ import { RouterLink } from '@angular/router';
           grid-template-columns: repeat(3, minmax(0, 1fr));
         }
 
-        .tf-top-actions a {
+        .tf-top-actions a,
+        .tf-top-actions button {
           text-align: center;
           justify-content: center;
+          width: 100%;
+        }
+
+        .tf-app-shell {
+          grid-template-columns: 1fr;
+        }
+
+        .tf-app-workspace-head {
+          flex-direction: column;
+          align-items: flex-start;
+        }
+
+        .tf-app-block {
+          width: calc(100% - 2rem);
+        }
+
+        .tf-app-block-draw {
+          left: 1rem;
+          right: auto;
+          top: 7.2rem;
+        }
+
+        .tf-app-note {
+          left: 1rem;
+          right: 1rem;
+          width: auto;
+          bottom: 1rem;
         }
 
         .tf-footer {
@@ -576,4 +898,73 @@ import { RouterLink } from '@angular/router';
     `
   ]
 })
-export class LandingComponent {}
+export class LandingComponent implements OnInit {
+  private readonly previewScenes: Record<LandingPreviewKey, LandingPreviewScene> = {
+    onboarding: {
+      sprint: 'Sprint 12',
+      taskTitle: 'Refinar onboarding visual',
+      saveLabel: 'Salvo agora',
+      textTitle: 'Texto',
+      textBody: 'Reorganizar etapas, reduzir atrito e destacar CTA principal na primeira dobra.',
+      drawTitle: 'Desenho',
+      noteTitle: 'Próximo passo',
+      noteBody: 'Validar nova hierarquia com métricas de conclusão do cadastro.'
+    },
+    signup: {
+      sprint: 'Sprint 13',
+      taskTitle: 'Ajustar fluxo de cadastro',
+      saveLabel: 'Salvo há 1 min',
+      textTitle: 'Checklist',
+      textBody: 'Remover campos redundantes, simplificar senha e inserir validação progressiva.',
+      drawTitle: 'Mapa',
+      noteTitle: 'Risco',
+      noteBody: 'Monitorar abandono na etapa de confirmação de e-mail após a mudança.'
+    },
+    journey: {
+      sprint: 'Pesquisa',
+      taskTitle: 'Montar mapa de jornada',
+      saveLabel: 'Sincronizado',
+      textTitle: 'Insights',
+      textBody: 'Identificar pontos de atrito entre descoberta, primeira ação e retorno ao workspace.',
+      drawTitle: 'Fluxo',
+      noteTitle: 'Foco',
+      noteBody: 'Cruzar feedback qualitativo com eventos da navegação para priorizar melhorias.'
+    },
+    priorities: {
+      sprint: 'Planejamento',
+      taskTitle: 'Reordenar prioridades',
+      saveLabel: 'Salvo agora',
+      textTitle: 'Resumo',
+      textBody: 'Separar ganhos rápidos, dependências críticas e tarefas que liberam mais contexto.',
+      drawTitle: 'Quadro',
+      noteTitle: 'Decisão',
+      noteBody: 'Subir primeiro os itens com alto impacto e baixa complexidade operacional.'
+    }
+  };
+
+  currentUser: UserResponse | null = null;
+  selectedPreview: LandingPreviewKey = 'onboarding';
+
+  constructor(private readonly auth: AuthService) {}
+
+  get currentPreview(): LandingPreviewScene {
+    return this.previewScenes[this.selectedPreview];
+  }
+
+  ngOnInit(): void {
+    this.currentUser = this.auth.currentUser;
+    this.auth.checkSession().subscribe(() => {
+      this.currentUser = this.auth.currentUser;
+    });
+  }
+
+  logout(): void {
+    this.auth.logout().subscribe(() => {
+      this.currentUser = null;
+    });
+  }
+
+  selectPreview(preview: LandingPreviewKey): void {
+    this.selectedPreview = preview;
+  }
+}

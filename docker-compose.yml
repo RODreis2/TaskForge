@@ -13,6 +13,8 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+    networks:
+      - private
 
   postgres-task:
     image: postgres:16-alpine
@@ -28,6 +30,8 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+    networks:
+      - private
 
   user-service:
     build:
@@ -45,6 +49,8 @@ services:
     depends_on:
       postgres-user:
         condition: service_healthy
+    networks:
+      - private
 
   task-service:
     build:
@@ -60,22 +66,86 @@ services:
     depends_on:
       postgres-task:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health | grep -q '\"status\":\"UP\"'"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    networks:
+      - private
 
   frontend:
     build:
       context: ./frontend/web
     container_name: taskforge-frontend
+    volumes:
+      - ./frontend/web:/app
+      - /app/node_modules
     expose:
       - "4200"
+    networks:
+      - private
 
-  gateway:
+  api-1:
     image: nginx:1.27-alpine
-    container_name: taskforge-gateway
+    container_name: taskforge-api-1
+    volumes:
+      - ./infra/nginx/api-gateway.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      frontend:
+        condition: service_started
+      user-service:
+        condition: service_started
+      task-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/ >/dev/null 2>&1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    networks:
+      - public
+      - private
+
+  api-2:
+    image: nginx:1.27-alpine
+    container_name: taskforge-api-2
+    volumes:
+      - ./infra/nginx/api-gateway.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      frontend:
+        condition: service_started
+      user-service:
+        condition: service_started
+      task-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/ >/dev/null 2>&1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    networks:
+      - public
+      - private
+
+  load-balancer:
+    image: nginx:1.27-alpine
+    container_name: taskforge-load-balancer
     ports:
       - "8088:80"
     volumes:
-      - ./infra/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./infra/nginx/load-balancer.conf:/etc/nginx/nginx.conf:ro
     depends_on:
-      - frontend
-      - user-service
-      - task-service
+      api-1:
+        condition: service_healthy
+      api-2:
+        condition: service_healthy
+    networks:
+      - public
+
+networks:
+  public:
+  private:

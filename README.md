@@ -17,7 +17,7 @@ The project is built as a monorepo with:
 - a user service for authentication and account management
 - a task service for tasks, folders, blocks, and documents
 - a web frontend for login, registration, and dashboard workflows
-- an API gateway that routes frontend and backend traffic through one entrypoint
+- two API gateway nodes behind an Nginx load balancer routing frontend and backend traffic through one entrypoint
 
 ## How to run
 
@@ -36,6 +36,7 @@ docker compose up --build
 
 3. Open:
 - `http://localhost:8088`
+- Traffic flows through `load-balancer -> api-1/api-2 -> frontend/user-service/task-service`
 
 ### Optional: run services locally
 

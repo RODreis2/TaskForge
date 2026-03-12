@@ -14,6 +14,12 @@ export interface UserResponse {
   email: string;
 }
 
+export interface ProfileUpdateRequest {
+  name: string;
+  email: string;
+  password?: string;
+}
+
 export interface TaskRequest {
   title: string;
   description: string;
@@ -75,6 +81,38 @@ export interface TaskDocumentContent {
       points: Array<[number, number]>;
     }>;
   };
+  workspace?: TaskDocumentWorkspace;
+}
+
+export interface TaskDocumentWorkspaceBlock {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  textContent?: string;
+  drawingData?: string;
+}
+
+export interface TaskDocumentWorkspaceImage {
+  id: string;
+  dataUrl: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+export interface TaskDocumentWorkspace {
+  blocks?: Record<string, TaskDocumentWorkspaceBlock>;
+  blockPositions?: Record<string, TaskDocumentWorkspaceBlock>;
+  images?: TaskDocumentWorkspaceImage[];
+  strokes?: Array<{
+    color: string;
+    width: number;
+    points: Array<[number, number]>;
+  }>;
+  brushColor?: string;
+  brushSize?: number;
 }
 
 export interface TaskDocumentResponse {
@@ -144,6 +182,10 @@ export class ApiService {
 
   logout(): Observable<void> {
     return this.http.post<void>('/api/users/logout', {});
+  }
+
+  updateProfile(payload: ProfileUpdateRequest): Observable<UserResponse> {
+    return this.http.patch<UserResponse>('/api/users/me', payload);
   }
 
   createTask(payload: TaskRequest): Observable<TaskResponse> {

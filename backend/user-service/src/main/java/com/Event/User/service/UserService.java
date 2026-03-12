@@ -2,18 +2,22 @@ package com.Event.User.service;
 
 
 import com.Event.User.domain.UserModel;
+import com.Event.User.dto.request.UpdateProfileRequest;
 import com.Event.User.dto.request.UserRequest;
 import com.Event.User.mapper.UserMapper;
 import com.Event.User.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
-import lombok.AllArgsConstructor;
-import lombok.NoArgsConstructor;
 import lombok.RequiredArgsConstructor;
+import org.apache.logging.log4j.util.Strings;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
+
 import java.util.List;
 import java.util.UUID;
+
+import static org.springframework.http.HttpStatus.BAD_REQUEST;
 
 
 @Service
@@ -53,6 +57,25 @@ public class UserService {
     public UserModel getById(UUID id) {
         return userRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("User not found"));
+    }
+
+    @Transactional
+    public UserModel updateProfile(UUID id, UpdateProfileRequest request) {
+        UserModel user = getById(id);
+        String normalizedEmail = request.getEmail().trim();
+
+        if (!user.getEmail().equalsIgnoreCase(normalizedEmail) && userRepository.existsByEmail(normalizedEmail)) {
+            throw new ResponseStatusException(BAD_REQUEST, "E-mail já cadastrado no sistema.");
+        }
+
+        user.setName(request.getName().trim());
+        user.setEmail(normalizedEmail);
+
+        if (Strings.isNotBlank(request.getPassword())) {
+            user.setPassword(passwordEncoder.encode(request.getPassword().trim()));
+        }
+
+        return userRepository.save(user);
     }
 
 

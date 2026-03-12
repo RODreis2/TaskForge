@@ -4,6 +4,7 @@ package com.Event.User.controller;
 import com.Event.User.config.TokenService;
 import com.Event.User.config.JWTuserData;
 import com.Event.User.domain.UserModel;
+import com.Event.User.dto.request.UpdateProfileRequest;
 import com.Event.User.dto.request.UserRequest;
 import com.Event.User.dto.response.UserResponse;
 import com.Event.User.exceptions.UsernameOrPasswordInvalidException;
@@ -21,6 +22,7 @@ import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
@@ -85,19 +87,27 @@ public class UserController {
 
     @GetMapping("/me")
     public ResponseEntity<UserResponse> me() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-        }
-
-        Object principal = authentication.getPrincipal();
-        if (!(principal instanceof JWTuserData jwtuserData)) {
+        JWTuserData jwtuserData = currentUser();
+        if (jwtuserData == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
         UserModel user = userService.getById(jwtuserData.id());
         UserResponse response = userMapper.toResponse(user);
         return ResponseEntity.ok(response);
+    }
+
+    @PatchMapping("/me")
+    public ResponseEntity<UserResponse> updateProfile(
+            @AuthenticationPrincipal JWTuserData jwtuserData,
+            @Valid @RequestBody UpdateProfileRequest request
+    ) {
+        if (jwtuserData == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        UserModel user = userService.updateProfile(jwtuserData.id(), request);
+        return ResponseEntity.ok(userMapper.toResponse(user));
     }
 
     private ResponseCookie buildSessionCookie(String token, long maxAgeSeconds) {
@@ -108,6 +118,15 @@ public class UserController {
                 .path("/")
                 .maxAge(maxAgeSeconds)
                 .build();
+    }
+
+    private JWTuserData currentUser() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !(authentication.getPrincipal() instanceof JWTuserData jwtuserData)) {
+            return null;
+        }
+
+        return jwtuserData;
     }
 
 }

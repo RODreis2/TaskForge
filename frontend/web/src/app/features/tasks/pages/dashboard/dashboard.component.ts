@@ -1,6 +1,7 @@
 import { AfterViewInit, Component, ElementRef, HostListener, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 import { Subject, EMPTY, debounceTime, switchMap, tap, catchError, takeUntil } from 'rxjs';
 import { AuthService } from '../../../../core/auth.service';
 import {
@@ -8,18 +9,19 @@ import {
   BlockResponse,
   FolderResponse,
   TaskDetailResponse,
+  TaskDocumentContent,
   TaskDocumentResponse,
   TaskResponse,
   TaskSummaryResponse,
   TaskTreeItemResponse,
   TaskTreeResponse
 } from '../../../../core/api.service';
-import { SaveState, Stroke, TreeContextMenuState, TreeRow, WorkspaceBlock, WorkspaceImage } from '../../models/dashboard.models';
+import { SaveState, Stroke, TreeContextMenuState, TreeRow, WorkspaceBlock, WorkspaceDocumentBlock, WorkspaceImage } from '../../models/dashboard.models';
 
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [CommonModule, ReactiveFormsModule, RouterLink],
   template: `
     <main class="obs-shell" [class.obs-shell-collapsed]="sidebarCollapsed">
       <aside class="obs-tree" [class.obs-tree-open]="sidebarOpen" (contextmenu)="onTreeAreaContextMenu($event)">
@@ -39,6 +41,7 @@ import { SaveState, Stroke, TreeContextMenuState, TreeRow, WorkspaceBlock, Works
                 <path d="M12 11v6m-3-3h6" />
               </svg>
             </button>
+            <a class="btn-ghost !px-2 !py-1" routerLink="/profile">Perfil</a>
             <button class="btn-ghost !px-2 !py-1" type="button" (click)="logout()">Sair</button>
           </div>
         </div>
@@ -985,11 +988,12 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   onBlockTextInput(blockId: string, text: string): void {
-    const block = this.blocks.find((item) => item.id === blockId);
-    if (!block) {
+    const blockExists = this.blocks.some((item) => item.id === blockId);
+    if (!blockExists) {
       return;
     }
-    block.textContent = text;
+    this.blocks = this.blocks.map((block) => (block.id === blockId ? { ...block, textContent: text } : block));
+    this.queueWorkspaceSave();
   }
 
   undoLastStroke(): void {
@@ -1057,7 +1061,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   private applyWorkspaceDocument(doc: TaskDocumentResponse): void {
     this.documentVersion = doc.version;
 
-    const workspace = (doc.content as any)?.workspace;
+    const workspace = doc.content?.workspace;
     if (!workspace || typeof workspace !== 'object') {
       this.renderBoardCanvas();
       return;
@@ -1078,14 +1082,16 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
         x: saved.x,
         y: saved.y,
         width: typeof saved.width === 'number' ? saved.width : block.width,
-        height: typeof saved.height === 'number' ? saved.height : block.height
+        height: typeof saved.height === 'number' ? saved.height : block.height,
+        textContent: typeof saved.textContent === 'string' ? saved.textContent : block.textContent,
+        drawingData: typeof saved.drawingData === 'string' ? saved.drawingData : block.drawingData
       };
     });
 
     this.images = Array.isArray(workspace.images)
       ? workspace.images
-          .filter((item: any) => typeof item?.id === 'string' && typeof item?.dataUrl === 'string')
-          .map((item: any) => ({
+          .filter((item) => typeof item?.id === 'string' && typeof item?.dataUrl === 'string')
+          .map((item) => ({
             id: item.id,
             dataUrl: item.dataUrl,
             x: typeof item.x === 'number' ? item.x : 60,
@@ -1097,8 +1103,8 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
 
     this.boardStrokes = Array.isArray(workspace.strokes)
       ? workspace.strokes
-          .filter((stroke: any) => Array.isArray(stroke?.points) && stroke.points.length > 1)
-          .map((stroke: any) => ({
+          .filter((stroke) => Array.isArray(stroke?.points) && stroke.points.length > 1)
+          .map((stroke) => ({
             color: typeof stroke.color === 'string' ? stroke.color : '#8fb3ff',
             width: typeof stroke.width === 'number' ? stroke.width : 2,
             points: stroke.points
@@ -1156,7 +1162,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
 
           return this.api
             .upsertTaskDocument(this.activeTaskId, {
-              content: this.buildWorkspaceDocument() as any,
+              content: this.buildWorkspaceDocument(),
               version: this.documentVersion
             })
             .pipe(
@@ -1182,10 +1188,17 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     this.saveQueue$.next();
   }
 
-  private buildWorkspaceDocument(): any {
-    const blocks: Record<string, { x: number; y: number; width: number; height: number }> = {};
+  private buildWorkspaceDocument(): TaskDocumentContent {
+    const blocks: Record<string, WorkspaceDocumentBlock> = {};
     this.blocks.forEach((block) => {
-      blocks[block.id] = { x: block.x, y: block.y, width: block.width, height: block.height };
+      blocks[block.id] = {
+        x: block.x,
+        y: block.y,
+        width: block.width,
+        height: block.height,
+        textContent: block.type === 'TEXT' ? block.textContent : undefined,
+        drawingData: block.type === 'DRAW' ? block.drawingData : undefined
+      };
     });
 
     return {

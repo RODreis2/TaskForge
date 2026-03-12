@@ -30,6 +30,16 @@ logging:
     org.springframework: INFO
     org.hibernate.SQL: DEBUG
 
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      probes:
+        enabled: true
+
 TaskForge:
   security:
     public-key: file:${TASK_PUBLIC_KEY:${PUBLIC_KEY:${user.home}/Projects/TaskForge/infra/keys/public.pem}}
