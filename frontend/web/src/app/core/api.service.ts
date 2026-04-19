@@ -164,6 +164,33 @@ export interface UpsertTaskDocumentRequest {
   version?: number | null;
 }
 
+export interface RagChatMessage {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+export interface RagChatRequest {
+  question: string;
+  route?: string | null;
+  taskId?: string | null;
+  selectedTaskTitle?: string | null;
+  history?: RagChatMessage[];
+}
+
+export interface RagChatSource {
+  kind: 'task' | 'document' | 'product_doc';
+  title: string;
+  snippet: string;
+  taskId?: string | null;
+  sourceId: string;
+}
+
+export interface RagChatResponse {
+  answer: string;
+  sources: RagChatSource[];
+  usedUserData: boolean;
+}
+
 @Injectable({ providedIn: 'root' })
 export class ApiService {
   constructor(private readonly http: HttpClient) {}
@@ -238,5 +265,9 @@ export class ApiService {
 
   upsertTaskDocument(taskId: string, payload: UpsertTaskDocumentRequest): Observable<TaskDocumentResponse> {
     return this.http.put<TaskDocumentResponse>(`/api/tasks/event/tasks/${taskId}/document`, payload);
+  }
+
+  askRag(payload: RagChatRequest): Observable<RagChatResponse> {
+    return this.http.post<RagChatResponse>('/api/rag/chat', payload);
   }
 }
