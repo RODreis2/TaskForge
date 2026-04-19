@@ -5,6 +5,7 @@ import { AuthService } from '../../core/auth.service';
 import { UserResponse } from '../../core/api.service';
 
 type LandingPreviewKey = 'onboarding' | 'signup' | 'journey' | 'priorities';
+type LandingDrawVariant = 'sketch' | 'map' | 'flow' | 'board';
 
 type LandingPreviewScene = {
   sprint: string;
@@ -13,6 +14,7 @@ type LandingPreviewScene = {
   textTitle: string;
   textBody: string;
   drawTitle: string;
+  drawVariant: LandingDrawVariant;
   noteTitle: string;
   noteBody: string;
 };
@@ -131,22 +133,81 @@ type LandingPreviewScene = {
                       <p>{{ currentPreview.textBody }}</p>
                     </article>
 
-                    <article class="tf-app-block tf-app-block-draw">
+                    <article
+                      class="tf-app-block tf-app-block-draw"
+                      [ngClass]="'tf-app-block-draw-' + currentPreview.drawVariant"
+                    >
                       <header>
                         <span>{{ currentPreview.drawTitle }}</span>
                         <span>#02</span>
                       </header>
-                      <div class="tf-app-sketch" aria-hidden="true">
-                        <span class="tf-app-sketch-node tf-app-sketch-node-a"></span>
-                        <span class="tf-app-sketch-node tf-app-sketch-node-b"></span>
-                        <span class="tf-app-sketch-node tf-app-sketch-node-c"></span>
-                        <svg viewBox="0 0 100 48" preserveAspectRatio="none">
-                          <path d="M12 26 C28 8, 42 8, 56 20 S80 34, 90 14" />
-                        </svg>
+                      <div
+                        class="tf-app-sketch"
+                        [ngClass]="'tf-app-sketch-' + currentPreview.drawVariant"
+                        [attr.data-variant]="currentPreview.drawVariant"
+                        aria-hidden="true"
+                      >
+                        <ng-container [ngSwitch]="currentPreview.drawVariant">
+                          <ng-container *ngSwitchCase="'sketch'">
+                            <span class="tf-app-sketch-node tf-app-sketch-node-a"></span>
+                            <span class="tf-app-sketch-node tf-app-sketch-node-b"></span>
+                            <span class="tf-app-sketch-node tf-app-sketch-node-c"></span>
+                            <svg viewBox="0 0 100 48" preserveAspectRatio="none">
+                              <path d="M12 26 C28 8, 42 8, 56 20 S80 34, 90 14" />
+                            </svg>
+                          </ng-container>
+
+                          <ng-container *ngSwitchCase="'map'">
+                            <div class="tf-app-map-stack">
+                              <div class="tf-app-map-row">
+                                <span class="tf-app-map-hub tf-app-map-hub-main">Início</span>
+                                <span class="tf-app-map-link"></span>
+                                <span class="tf-app-map-hub tf-app-map-hub-a">Conta</span>
+                                <span class="tf-app-map-link"></span>
+                                <span class="tf-app-map-hub tf-app-map-hub-c">Verificar</span>
+                              </div>
+                              <div class="tf-app-map-branch">
+                                <span class="tf-app-map-branch-line"></span>
+                                <span class="tf-app-map-hub tf-app-map-hub-b">Senha</span>
+                              </div>
+                            </div>
+                          </ng-container>
+
+                          <ng-container *ngSwitchCase="'flow'">
+                            <div class="tf-app-flow-track">
+                              <span class="tf-app-flow-rail"></span>
+                              <div class="tf-app-flow-step tf-app-flow-step-a">
+                                <strong>01</strong>
+                                <span>Descoberta</span>
+                              </div>
+                              <div class="tf-app-flow-step tf-app-flow-step-b">
+                                <strong>02</strong>
+                                <span>Primeira ação</span>
+                              </div>
+                              <div class="tf-app-flow-step tf-app-flow-step-c">
+                                <strong>03</strong>
+                                <span>Retorno</span>
+                              </div>
+                            </div>
+                          </ng-container>
+
+                          <ng-container *ngSwitchCase="'board'">
+                            <span class="tf-app-board-column tf-app-board-column-a"></span>
+                            <span class="tf-app-board-column tf-app-board-column-b"></span>
+                            <span class="tf-app-board-column tf-app-board-column-c"></span>
+                            <span class="tf-app-board-accent tf-app-board-accent-a"></span>
+                            <span class="tf-app-board-accent tf-app-board-accent-b"></span>
+                            <span class="tf-app-board-card tf-app-board-card-a"></span>
+                            <span class="tf-app-board-card tf-app-board-card-b"></span>
+                            <span class="tf-app-board-card tf-app-board-card-c"></span>
+                            <span class="tf-app-board-card tf-app-board-card-d"></span>
+                            <span class="tf-app-board-card tf-app-board-card-e"></span>
+                          </ng-container>
+                        </ng-container>
                       </div>
                     </article>
 
-                    <article class="tf-app-note">
+                    <article class="tf-app-note" [ngClass]="'tf-app-note-' + currentPreview.drawVariant">
                       <strong>{{ currentPreview.noteTitle }}</strong>
                       <p>{{ currentPreview.noteBody }}</p>
                     </article>
@@ -605,12 +666,26 @@ type LandingPreviewScene = {
         width: 9.8rem;
       }
 
+      .tf-app-block-draw-map,
+      .tf-app-block-draw-flow {
+        top: 1.95rem;
+      }
+
+      .tf-app-block-draw-map {
+        width: 9rem;
+      }
+
+      .tf-app-block-draw-flow {
+        width: 9rem;
+      }
+
       .tf-app-sketch {
         position: relative;
         height: 4.2rem;
         margin-top: 0.55rem;
         border-radius: 0.7rem;
         background: rgba(18, 31, 48, 0.88);
+        overflow: hidden;
       }
 
       .tf-app-sketch svg {
@@ -653,11 +728,260 @@ type LandingPreviewScene = {
         top: 1.45rem;
       }
 
+      .tf-app-sketch-map {
+        background:
+          radial-gradient(circle at 24% 50%, rgba(112, 168, 255, 0.18), transparent 22%),
+          linear-gradient(180deg, rgba(18, 31, 48, 0.96), rgba(14, 24, 38, 0.94));
+        height: 2.75rem;
+      }
+
+      .tf-app-map-hub {
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 0;
+        min-height: 0.72rem;
+        padding: 0.08rem 0.2rem;
+        border: 1px solid rgba(98, 145, 214, 0.7);
+        border-radius: 999px;
+        background: rgba(14, 27, 42, 0.94);
+        color: #d5e5ff;
+        font-size: 0.33rem;
+        font-weight: 700;
+        letter-spacing: 0.02em;
+        text-transform: uppercase;
+        z-index: 1;
+        white-space: nowrap;
+      }
+
+      .tf-app-map-stack {
+        position: absolute;
+        inset: 0.45rem 0.5rem 0.45rem;
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        justify-content: center;
+        gap: 0.2rem;
+        z-index: 1;
+      }
+
+      .tf-app-map-row {
+        display: grid;
+        grid-template-columns: auto 1fr auto 1fr auto;
+        align-items: center;
+        gap: 0.18rem;
+      }
+
+      .tf-app-map-link,
+      .tf-app-map-branch-line {
+        display: block;
+        height: 2px;
+        border-radius: 999px;
+        background: linear-gradient(90deg, rgba(124, 174, 255, 0.8), rgba(124, 174, 255, 0.18));
+      }
+
+      .tf-app-map-branch {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.22rem;
+      }
+
+      .tf-app-map-branch-line {
+        width: 1.15rem;
+      }
+
+      .tf-app-sketch-flow {
+        background:
+          radial-gradient(circle at 18% 24%, rgba(246, 206, 171, 0.1), transparent 20%),
+          radial-gradient(circle at 80% 70%, rgba(126, 175, 255, 0.16), transparent 24%),
+          linear-gradient(180deg, rgba(14, 25, 40, 0.96), rgba(15, 29, 46, 0.92)),
+          rgba(18, 31, 48, 0.88);
+        height: 2.95rem;
+      }
+
+      .tf-app-flow-track {
+        position: absolute;
+        inset: 0.45rem 0.5rem;
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 0.32rem;
+        align-items: start;
+        z-index: 1;
+      }
+
+      .tf-app-flow-rail {
+        position: absolute;
+        left: 1rem;
+        right: 1rem;
+        top: 0.72rem;
+        height: 2px;
+        border-radius: 999px;
+        background: linear-gradient(90deg, rgba(246, 206, 171, 0.45), rgba(126, 175, 255, 0.58));
+        z-index: 0;
+      }
+
+      .tf-app-flow-step {
+        position: relative;
+        z-index: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.14rem;
+        min-width: 0;
+        text-align: center;
+        color: #dce7fb;
+      }
+
+      .tf-app-flow-step strong {
+        width: 1rem;
+        height: 1rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 999px;
+        border: 1px solid rgba(86, 125, 182, 0.62);
+        background: rgba(18, 35, 54, 0.98);
+        color: #f4ceab;
+        font-size: 0.38rem;
+        letter-spacing: 0.04em;
+        box-shadow: 0 0.18rem 0.45rem rgba(4, 10, 20, 0.2);
+      }
+
+      .tf-app-flow-step span {
+        display: block;
+        padding: 0.18rem 0.2rem;
+        border: 1px solid rgba(86, 125, 182, 0.55);
+        border-radius: 0.5rem;
+        background: rgba(18, 35, 54, 0.96);
+        font-size: 0.34rem;
+        line-height: 1.2;
+        width: 100%;
+      }
+
+      .tf-app-flow-step-b {
+        margin-top: 0.45rem;
+      }
+
+      .tf-app-flow-step-c {
+        margin-top: 0.9rem;
+      }
+
+      .tf-app-sketch-board {
+        background:
+          radial-gradient(circle at 22% 24%, rgba(246, 206, 171, 0.12), transparent 18%),
+          radial-gradient(circle at 82% 70%, rgba(126, 175, 255, 0.14), transparent 22%),
+          linear-gradient(180deg, rgba(17, 27, 43, 0.96), rgba(13, 23, 38, 0.94)),
+          rgba(18, 31, 48, 0.88);
+      }
+
+      .tf-app-board-column,
+      .tf-app-board-accent,
+      .tf-app-board-card {
+        position: absolute;
+        border-radius: 0.4rem;
+      }
+
+      .tf-app-board-column {
+        top: 0.45rem;
+        bottom: 0.45rem;
+        width: 2.35rem;
+        border: 1px solid rgba(72, 104, 150, 0.36);
+        background: rgba(14, 24, 38, 0.68);
+      }
+
+      .tf-app-board-column-a {
+        left: 0.45rem;
+      }
+
+      .tf-app-board-column-b {
+        left: calc(50% - 1.175rem);
+      }
+
+      .tf-app-board-column-c {
+        right: 0.45rem;
+      }
+
+      .tf-app-board-accent {
+        height: 0.14rem;
+        border-radius: 999px;
+        background: linear-gradient(90deg, rgba(246, 206, 171, 0.95), rgba(126, 175, 255, 0.95));
+        box-shadow: 0 0 0.35rem rgba(246, 206, 171, 0.18);
+      }
+
+      .tf-app-board-accent-a {
+        left: 0.75rem;
+        top: 0.72rem;
+        width: 1.15rem;
+      }
+
+      .tf-app-board-accent-b {
+        right: 0.8rem;
+        top: 1.08rem;
+        width: 0.7rem;
+      }
+
+      .tf-app-board-card {
+        height: 0.72rem;
+        border: 1px solid rgba(94, 139, 203, 0.72);
+        background: linear-gradient(90deg, rgba(48, 82, 127, 0.92), rgba(27, 48, 76, 0.96));
+        box-shadow: 0 0.2rem 0.45rem rgba(3, 9, 17, 0.28);
+      }
+
+      .tf-app-board-card-a {
+        left: 0.75rem;
+        right: 7.15rem;
+        top: 1rem;
+      }
+
+      .tf-app-board-card-b {
+        left: 3.95rem;
+        right: 3.65rem;
+        top: 0.9rem;
+      }
+
+      .tf-app-board-card-c {
+        left: 7.2rem;
+        right: 0.75rem;
+        top: 1.35rem;
+        height: 0.58rem;
+        background: linear-gradient(90deg, rgba(74, 110, 166, 0.92), rgba(38, 64, 102, 0.96));
+      }
+
+      .tf-app-board-card-d {
+        left: 0.95rem;
+        right: 6.95rem;
+        top: 2.25rem;
+        height: 0.5rem;
+        background: linear-gradient(90deg, rgba(38, 64, 102, 0.88), rgba(23, 41, 67, 0.96));
+      }
+
+      .tf-app-board-card-e {
+        left: 4.15rem;
+        right: 3.8rem;
+        top: 2.05rem;
+        height: 0.94rem;
+        border-color: rgba(246, 206, 171, 0.55);
+        background: linear-gradient(90deg, rgba(83, 96, 145, 0.92), rgba(34, 52, 86, 0.96));
+        box-shadow: 0 0.22rem 0.6rem rgba(246, 206, 171, 0.14);
+      }
+
       .tf-app-note {
         left: 3.1rem;
         bottom: 1rem;
         width: 10.8rem;
         padding: 0.6rem 0.7rem;
+      }
+
+      .tf-app-note-map {
+        left: 2.2rem;
+        width: 8.8rem;
+      }
+
+      .tf-app-note-flow {
+        left: 2rem;
+        width: 8.5rem;
       }
 
       .tf-app-note strong {
@@ -907,6 +1231,7 @@ export class LandingComponent implements OnInit {
       textTitle: 'Texto',
       textBody: 'Reorganizar etapas, reduzir atrito e destacar CTA principal na primeira dobra.',
       drawTitle: 'Desenho',
+      drawVariant: 'sketch',
       noteTitle: 'Próximo passo',
       noteBody: 'Validar nova hierarquia com métricas de conclusão do cadastro.'
     },
@@ -917,6 +1242,7 @@ export class LandingComponent implements OnInit {
       textTitle: 'Checklist',
       textBody: 'Remover campos redundantes, simplificar senha e inserir validação progressiva.',
       drawTitle: 'Mapa',
+      drawVariant: 'map',
       noteTitle: 'Risco',
       noteBody: 'Monitorar abandono na etapa de confirmação de e-mail após a mudança.'
     },
@@ -927,6 +1253,7 @@ export class LandingComponent implements OnInit {
       textTitle: 'Insights',
       textBody: 'Identificar pontos de atrito entre descoberta, primeira ação e retorno ao workspace.',
       drawTitle: 'Fluxo',
+      drawVariant: 'flow',
       noteTitle: 'Foco',
       noteBody: 'Cruzar feedback qualitativo com eventos da navegação para priorizar melhorias.'
     },
@@ -937,6 +1264,7 @@ export class LandingComponent implements OnInit {
       textTitle: 'Resumo',
       textBody: 'Separar ganhos rápidos, dependências críticas e tarefas que liberam mais contexto.',
       drawTitle: 'Quadro',
+      drawVariant: 'board',
       noteTitle: 'Decisão',
       noteBody: 'Subir primeiro os itens com alto impacto e baixa complexidade operacional.'
     }
