@@ -75,6 +75,43 @@ services:
     networks:
       - private
 
+  rag-service:
+    build:
+      context: ./backend/rag-service
+    container_name: taskforge-rag-service
+    environment:
+      TASK_SERVICE_BASE_URL: http://task-service:8080
+      OLLAMA_BASE_URL: http://host.docker.internal:11434
+      OLLAMA_CHAT_MODEL: llama3
+      EMBEDDING_MODEL_NAME: sentence-transformers/all-mpnet-base-v2
+      PUBLIC_KEY: /run/keys/public.pem
+      RAG_DATA_DIR: /data
+      RAG_DOCS_DIR: /app/docs
+      RAG_READ_TIMEOUT_SECONDS: 180
+      RAG_CONNECT_TIMEOUT_SECONDS: 10
+    volumes:
+      - ./infra/keys:/run/keys:ro
+      - ./out/rag-data:/data
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      task-service:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import json, urllib.request; data = json.load(urllib.request.urlopen('http://localhost:8090/health')); raise SystemExit(0 if data.get('status') == 'ok' else 1)",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+    networks:
+      - private
+
   frontend:
     build:
       context: ./frontend/web
@@ -99,6 +136,8 @@ services:
         condition: service_started
       task-service:
         condition: service_healthy
+      rag-service:
+        condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/ >/dev/null 2>&1"]
       interval: 10s
@@ -120,6 +159,8 @@ services:
       user-service:
         condition: service_started
       task-service:
+        condition: service_healthy
+      rag-service:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/ >/dev/null 2>&1"]
