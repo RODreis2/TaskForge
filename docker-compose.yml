@@ -33,6 +33,26 @@ services:
     networks:
       - private
 
+  prometheus:
+    image: prom/prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    depends_on:
+      task-service:
+        condition: service_healthy
+    networks:
+      - private
+  grafana:
+    image: grafana/grafana-oss
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+    networks:
+      - private
+
   user-service:
     build:
       context: ./backend/user-service
