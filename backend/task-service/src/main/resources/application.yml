@@ -34,11 +34,17 @@ management:
   endpoints:
     web:
       exposure:
-        include: health
+        include: health,info,prometheus
   endpoint:
     health:
+      show-details: always
       probes:
         enabled: true
+  prometheus:
+    metrics:
+      export:
+        enabled: true
+
 
 TaskForge:
   security:
